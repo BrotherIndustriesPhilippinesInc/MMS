@@ -1,0 +1,193 @@
+﻿
+<div class="card mb-4">
+    <div class="card-body">
+        <h6 class="card-title">Filters</h6>
+
+        <div class="row g-3">
+            <div class="col-md-2">
+                <label class="form-label">Month</label>
+                <input type="number" id="monthInput" class="form-control form-control-sm" min="1" max="12">
+          
+            </div>
+
+            <div class="col-md-2">
+                <label class="form-label">Year</label>
+                <input type="number" id="yearInput" class="form-control form-control-sm" min="2000">
+            </div>
+            <script>
+                $(document).ready(function () {
+                    const today = new Date();
+
+                    $('#monthInput').val(today.getMonth() + 1);
+                    $('#yearInput').val(today.getFullYear());
+                });
+            </script>
+
+            <div class="col-md-3">
+                <label class="form-label">Shift</label>
+                <select id="shiftInput" class="form-select form-select-sm">
+                    <option value="Day">Day</option>
+                    <option value="Night">Night</option>
+                    <option value="NoSched">No Schedule</option>
+                    <option value=" ">All</option>
+                </select>
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label">Cost Code</label>
+                <select id="costCodeInput" class="form-select form-select-sm">
+                   @* <option value="C006">PR1</option> *@
+                    @* <option value="Y005">PR2</option> *@
+                    <option value="A003">TN</option>
+                </select>
+            </div>
+
+            <div class="col-md-2 d-grid">
+                <label class="form-label">&nbsp;</label>
+                <button id="insertPivotBtn" class="btn btn-primary btn-sm">Load</button>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- LEGEND -->
+<div class="card mb-4 legend-box">
+    <div class="card-body">
+        <h6 class="card-title">Attendance Legend</h6>
+
+        <div class="d-flex gap-4 flex-wrap mb-3">
+            <span class="legend-text text-danger">■ Lacking MP</span>
+            <span class="legend-text text-primary">■ Excess MP</span>
+        </div>
+
+        <div class="d-flex gap-3 flex-wrap">
+            <span><span class="legend-square" style="background:#ffeb3b;"></span>No Working Day</span>
+            <span><span class="legend-square" style="background:#c8e6c9;"></span>Date Today</span>
+            <span><span class="legend-square" style="background:#ffffff; border:1px solid #000;"></span>Regular Working Day</span>
+            <span><span class="legend-square" style="background:#4caf50;"></span>Local Holiday</span>
+            <span><span class="legend-square" style="background:#f44336;"></span>Regular/Legal Holiday</span>
+            <span><span class="legend-square" style="background:#2196f3;"></span>Special Holiday</span>
+        </div>
+
+    </div>
+</div>
+
+<!-- TABS -->
+<ul class="nav nav-tabs mb-3">
+    <li class="nav-item">
+        <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-attendance">Attendance</button>
+    </li>
+    <li class="nav-item">
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-graphs">AWOL / Resigned Rate</button>
+    </li>
+</ul>
+
+<div class="tab-content">
+
+    <!-- ATTENDANCE -->
+    <div class="tab-pane fade show active" id="tab-attendance">
+
+        <div class="card mb-4">
+            <div class="card-body">
+                <h6 class="card-title">Manpower Attendance Rate</h6>
+
+                <div class="table-responsive" style="max-height:500px">
+                    <table class="table table-bordered table-sm" id="attendanceTable">
+                        <thead>
+                            <tr id="headerRow"></tr>
+                            <tr id="subHeaderRow"></tr>
+                        </thead>
+                        <tbody id="tableBody"></tbody>
+                    </table>
+                </div>
+
+            </div>
+        </div>
+
+
+        <div class="card mb-4">
+            <div class="card-body">
+                <h6 class="card-title">Standard Manpower Upload</h6>
+                <div class="row g-3">
+                    <!-- Upload STD (Excel) -->
+                    <div class="col-md-6">
+                        <label for="stdFile" class="form-label">
+                            Upload STD (Excel)
+                        </label>
+                        <input type="file"
+                               id="stdFile"
+                               class="form-control"
+                               accept=".xls,.xlsx">
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-body">
+                <h6 class="card-title title-green">Process Summary (Original Tap)</h6>
+                <div class="row g-3">
+                    <!-- Upload STD (Excel) -->
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-sm">
+                            <thead id="pivotTable"></thead>
+                            <tbody id="pivotTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+       <div class="card mb-4">
+            <div class="card-body ">
+                <h6 class="card-title title-purple">Process Summary (Retap Data)</h6>
+                <div class="row g-3">
+                    <!-- Upload STD (Excel) -->
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-sm">
+                            <thead id="retap_table"></thead>
+                            <tbody id="retap_tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-body">
+                <h6 class="card-title">Absent Breakdown</h6>
+
+                <div class="table-responsive" style="max-height:500px">
+                    <table class="table table-bordered table-sm" id="awolRateTable">
+                        <thead>
+                            <tr id="absentheaderRow"></tr>
+                        </thead>
+                        <tbody id="absenttableBody"></tbody>
+                    </table>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+
+    <!-- GRAPHS -->
+    @* <div class="tab-pane fade" id="tab-graphs"> *@
+    @*     <div class="card"> *@
+    @*         <div class="card-body"> *@
+    @*             <h6 class="card-title">AWOL / Resigned Rate</h6> *@
+    @*             <canvas id="awolRateChart"></canvas> *@
+    @*         </div> *@
+    @*     </div> *@
+    @* </div> *@
+
+    <!-- SUMMARY -->
+    @* <div class="tab-pane fade" id="tab-summary"> *@
+   
+    @* </div> *@
+
+</div>
