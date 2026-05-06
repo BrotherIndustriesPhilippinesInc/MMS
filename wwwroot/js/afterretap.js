@@ -1,15 +1,10 @@
-﻿// ===============================
-// GLOBAL VARIABLES
-// ===============================
+﻿
 let calendarDataretapretap = [];
 let calendarMapretapretap = {};
 let operatorValuesretap = {};
 let currentSTDretap = {};
 let currentDaysretap = [];
 
-// ===============================
-// BUILD FAST CALENDAR LOOKUP
-// ===============================
 function buildCalendarMapretap() {
     calendarMapretapretap = {};
 
@@ -22,9 +17,6 @@ function buildCalendarMapretap() {
     });
 }
 
-// ===============================
-// LOAD CALENDAR THEN RENDER TABLE
-// ===============================
 function loadCalendarAndRenderretap(retapdata) {
 
     const monthVal = $('#monthInput').val();
@@ -49,9 +41,6 @@ function loadCalendarAndRenderretap(retapdata) {
     });
 }
 
-// ===============================
-// DAY STYLE COLORING
-// ===============================
 function getDayStyleretap(year, month, dayNumber) {
 
     const type = calendarMapretapretap[`${year}-${month}-${dayNumber}`];
@@ -110,11 +99,12 @@ function renderLineCountTableretap(retap_data) {
     const year = parseInt($('#yearInput').val(), 10);
 
     const headerRow = document.createElement("tr");
+    //headerRow.innerHTML = `<th class="text-start">Skill Group</th>`;
     headerRow.innerHTML = `<th class="text-start">Skill Group</th>`;
 
     const sample = retap_data[0];
     const dayColumns = Object.keys(sample).filter(
-        c => c !== "Skill" && c !== "SkillGroup"
+        c => c !== "Skill" && c !== "SkillGroup" && c !== "SkillCategory"
     );
 
     currentDaysretap = dayColumns;
@@ -295,7 +285,7 @@ $("#insertPivotBtn").on("click", function () {
     // 🔹 Show loading inside tbody
     $("#retap_tbody").html(`
         <tr>
-            <td colspan="32" class="text-center">
+            <td colspan="31" class="text-center">
                 <div class="spinner-border text-primary" role="status"></div>
                 <div>Loading RETAP data...</div>
             </td>
@@ -319,7 +309,7 @@ $("#insertPivotBtn").on("click", function () {
             } else {
                 $("#retap_tbody").html(`
                     <tr>
-                        <td colspan="32" class="text-center text-muted">
+                        <td colspan="31" class="text-center text-muted">
                             No data found.
                         </td>
                     </tr>
@@ -330,7 +320,7 @@ $("#insertPivotBtn").on("click", function () {
 
             $("#retap_tbody").html(`
                 <tr>
-                    <td colspan="32" class="text-center text-danger">
+                    <td colspan="31" class="text-center text-danger">
                         Error loading data.
                     </td>
                 </tr>

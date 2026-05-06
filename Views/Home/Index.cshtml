@@ -6,7 +6,22 @@
         <div class="row g-3">
             <div class="col-md-2">
                 <label class="form-label">Month</label>
-                <input type="number" id="monthInput" class="form-control form-control-sm" min="1" max="12">
+                @* <input type="number" id="monthInput" class="form-control form-control-sm" min="1" max="12"> *@
+                <select type="number" id="monthInput" class="form-control form-control-sm">
+                    <option value="1">January</option>
+                    <option value="2">February</option>
+                    <option value="3">March</option>
+                    <option value="4">April</option>
+                    <option value="5">May</option>
+                    <option value="6">June</option>
+                    <option value="7">July</option>
+                    <option value="8">August</option>
+                    <option value="9">September</option>
+                    <option value="10">October</option>
+                    <option value="11">November</option>
+                    <option value="12">December</option>
+
+                </select>
           
             </div>
 
@@ -78,11 +93,44 @@
     <li class="nav-item">
         <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-attendance">Attendance</button>
     </li>
-    <li class="nav-item">
+   @*  <li class="nav-item">
         <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-graphs">AWOL / Resigned Rate</button>
-    </li>
+    </li> *@
 </ul>
 
+<style>
+    .filter-container {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 16px;
+        padding: 8px 12px;
+    }
+
+    .filter-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 14px;
+        cursor: pointer;
+    }
+
+        .filter-item input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }
+
+    .highlight {
+        font-weight: 600;
+    }
+
+    .divider {
+        width: 1px;
+        height: 20px;
+        background: #ccc;
+    }
+</style>
 <div class="tab-content">
 
     <!-- ATTENDANCE -->
@@ -92,7 +140,32 @@
             <div class="card-body">
                 <h6 class="card-title">Manpower Attendance Rate</h6>
 
-                <div class="table-responsive" style="max-height:500px">
+                <div class="filter-container">
+                    <label class="filter-item highlight">
+                        <input type="checkbox" id="all" checked />
+                        <span>All</span>
+                    </label>
+
+                    <div class="divider"></div>
+
+                    <label class="filter-item">
+                        <input type="checkbox" id="direct_filter" />
+                        <span>Direct</span>
+                    </label>
+
+                    <label class="filter-item">
+                        <input type="checkbox" id="kit_filter" />
+                        <span>Kit</span>
+                    </label>
+
+                    <label class="filter-item">
+                        <input type="checkbox" id="mso_filter" />
+                        <span>MSO</span>
+                    </label>
+                </div>
+               
+
+                <div class="table-responsive" style="max-height:500px; overflow:auto;">
                     <table class="table table-bordered table-sm" id="attendanceTable">
                         <thead>
                             <tr id="headerRow"></tr>
@@ -145,7 +218,6 @@
             <div class="card-body ">
                 <h6 class="card-title title-purple">Process Summary (Retap Data)</h6>
                 <div class="row g-3">
-                    <!-- Upload STD (Excel) -->
                     <div class="table-responsive">
                         <table class="table table-bordered table-sm">
                             <thead id="retap_table"></thead>
@@ -156,7 +228,7 @@
 
             </div>
         </div>
-
+@* 
         <div class="card mb-4">
             <div class="card-body">
                 <h6 class="card-title">Absent Breakdown</h6>
@@ -171,7 +243,7 @@
                 </div>
 
             </div>
-        </div>
+        </div> *@
 
     </div>
 

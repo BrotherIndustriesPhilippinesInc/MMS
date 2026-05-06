@@ -3,13 +3,13 @@ $(document).ready(function () {
     let attendanceChart = null;
 
     function buildAttendanceTable(data, calendarData) {
-
         const metricLabels = {
             'Register MP': 'Register MP',
             'Actual': 'Present (Actual)',
             'Absent': 'Absent',
-            'MLCount': 'ML Count',
-            'NWCount': 'NW Count (No Work)',
+            'RS_Count': 'RS (Resigned)',
+            'ML_Count': 'ML Count',
+            'NW_Count': 'NW Count (No Work)',
             'AbsentRate': 'Absent Rate'
         };
 
@@ -27,7 +27,7 @@ $(document).ready(function () {
         let todayColIndex = -1;
         const isCurrentMonth = (selectedMonth === todayMonth && selectedYear === todayYear);
 
-        // ✅ CALENDAR MAP
+        // CALENDAR MAP
         const calendarMap = {};
         if (calendarData && calendarData.length > 0) {
             calendarData.forEach(c => {
@@ -36,7 +36,7 @@ $(document).ready(function () {
             });
         }
 
-        // ✅ COLOR FUNCTION
+        // COLOR FUNCTION
         function getCalendarStyle(type) {
             switch (type) {
                 case -1: return 'background-color:#ffffff';
@@ -48,7 +48,7 @@ $(document).ready(function () {
             }
         }
 
-        // ✅ ABSENT RATE CALC
+        // ABSENT RATE CALC
         function computeAbsentRate(dayData) {
             let absent = parseFloat(dayData['Absent'] || 0);
             let ml = parseFloat(dayData['MLCount'] || 0);
@@ -123,24 +123,24 @@ $(document).ready(function () {
                 const day = parseInt(dayData.MonthDay, 10);
                 const calendar = calendarMap[day];
 
-                // 🎨 APPLY COLOR
+                // APPLY COLOR
                 if (calendar) {
                     styles.push(getCalendarStyle(calendar.type));
                 }
 
-                // 🔥 ABSENT RATE LOGIC
+                //ABSENT RATE LOGIC
                 if (key === 'AbsentRate') {
 
                     let rate = 0;
 
-                    // ❌ NOT working day → 0
+                    //NOT working day → 0
                     if (calendar && calendar.type == -1) {
 
-                        // ACTUAL
+                        //ACTUAL
                         if (!isCurrentMonth || index <= todayColIndex) {
                             rate = computeAbsentRate(dayData);
                         }
-                        // FORECAST
+                        //FORECAST
                         else {
 
                             let total = 0;
@@ -172,12 +172,35 @@ $(document).ready(function () {
                     value = parseInt(value, 10);
                 }
 
-                // ✅ TODAY HIGHLIGHT (no override)
+                // TODAY HIGHLIGHT (no override)
                 if (isCurrentMonth && index === todayColIndex) {
                     styles.push('outline:2px solid #2e7d32;font-weight:bold');
                 }
 
-                row += `<td style="${styles.join(';')}">${value}</td>`;
+                //row += `<td style="${styles.join(';')}">${value}</td>`;
+                if (key === 'Absent') {
+
+                    const ab = parseInt(dayData['AB_Count'] || 0);
+                    const sl = parseInt(dayData['SL_Count'] || 0);
+                    const vl = parseInt(dayData['VL_Count'] || 0);
+
+                    row += `
+                        <td style="${styles.join(';')}">
+                            <div class="absent-cell text-danger" style="cursor:pointer;font-weight:bold;">
+                                ${value}
+                            </div>
+
+                            <div class="absent-breakdown d-none mt-1" style="font-size:11px;">
+                                AB: ${ab} <br>
+                                SL: ${sl} <br>
+                                VL: ${vl}
+                            </div>
+                        </td>
+                        `;
+
+                } else {
+                    row += `<td style="${styles.join(';')}">${value}</td>`;
+                }
             });
 
             row += '</tr>';
@@ -188,7 +211,12 @@ $(document).ready(function () {
         Swal.close();
     }
 
-    // ✅ VIEW TOGGLE
+    // CLICK TOGGLE ABSENT DETAILS
+    $(document).off('click', '.absent-cell').on('click', '.absent-cell', function () {
+        $(this).siblings('.absent-breakdown').toggleClass('d-none');
+    });
+
+    //VIEW TOGGLE
     $('#viewToggle').on('change', function () {
         if ($(this).is(':checked')) {
             $('#graphView').removeClass('d-none');
@@ -199,7 +227,7 @@ $(document).ready(function () {
         }
     });
 
-    // ✅ BUTTON
+    // BUTTON
     $('#insertPivotBtn').on('click', function () {
 
         const monthVal = $('#monthInput').val();
@@ -217,7 +245,7 @@ $(document).ready(function () {
 
         $('#headerRow').html('');
 
-        // 🔹 SHOW LOADING INSIDE TBODY
+        // SHOW LOADING INSIDE TBODY
         $('#tableBody').html(`
         <tr>
             <td colspan="100%" class="text-center">
@@ -234,6 +262,7 @@ $(document).ready(function () {
             dataType: 'json',
             success: function (calendarData) {
 
+                // FIRST CALL → Attendance
                 $.ajax({
                     url: 'Attendance/GetAttendanceCount',
                     method: 'POST',
@@ -244,43 +273,66 @@ $(document).ready(function () {
                         shift: shiftVal,
                         costCode: costCodeVal
                     },
-                    success: function (response) {
+                    success: function (attendanceRes) {
 
-                        if (response.success && response.data.length > 0) {
-                            buildAttendanceTable(response.data, calendarData);
-                        } else {
-                            $('#tableBody').html(`
-                            <tr>
-                                <td colspan="100%" class="text-center text-muted">
-                                    No attendance data found.
-                                </td>
-                            </tr>
-                        `);
+                        if (!attendanceRes.success) {
+                            alert('Error loading attendance');
+                            return;
                         }
+
+                        // SECOND CALL → Register MP
+                        $.ajax({
+                            url: 'Attendance/GetregisterMP',
+                            method: 'POST',
+                            dataType: 'json',
+                            data: {
+                                month: monthVal,
+                                year: yearVal,
+                                shift: shiftVal,
+                                costCode: costCodeVal
+                            },
+                            success: function (registerRes) {
+
+                                if (!registerRes.success) {
+                                    alert('Error loading Register MP');
+                                    return;
+                                }
+
+                                let attendanceData = attendanceRes.data;
+                                let registerData = registerRes.data;
+
+                                // ✅ MERGE DATA HERE
+                                attendanceData.forEach((day, index) => {
+                                    if (registerData[index]) {
+                                        day['Register MP'] = registerData[index]['Register MP'];
+                                    }
+                                });
+
+                                // ✅ FINAL CALL
+                                buildAttendanceTable(attendanceData, calendarData);
+                            },
+                            error: function () {
+                                alert('Error loading Register MP');
+                            }
+                        });
+
                     },
                     error: function () {
-                        $('#tableBody').html(`
-                        <tr>
-                            <td colspan="100%" class="text-center text-danger">
-                                Error loading data.
-                            </td>
-                        </tr>
-                    `);
-                    },
-                    complete: function () {
-                        $btn.prop('disabled', false).text('Load');
+                        alert('Error loading attendance');
                     }
                 });
 
             },
             error: function () {
                 $('#tableBody').html(`
-                <tr>
-                    <td colspan="100%" class="text-center text-danger">
-                        Failed to fetch calendar data.
-                    </td>
-                </tr>
-            `);
+            <tr>
+                <td colspan="100%" class="text-center text-danger">
+                    Failed to fetch calendar data.
+                </td>
+            </tr>
+        `);
+            },
+            complete: function () {
                 $btn.prop('disabled', false).text('Load');
             }
         });

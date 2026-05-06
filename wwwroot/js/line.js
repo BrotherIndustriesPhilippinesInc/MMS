@@ -1,15 +1,10 @@
-// ===============================
-// GLOBAL VARIABLES
-// ===============================
+﻿
 let calendarData = [];
 let calendarMap  = {};
 let operatorValues = {};
 let currentSTD = {};
 let currentDays = [];
 
-// ===============================
-// BUILD FAST CALENDAR LOOKUP
-// ===============================
 function buildCalendarMap() {
     calendarMap = {};
 
@@ -22,9 +17,6 @@ function buildCalendarMap() {
     });
 }
 
-// ===============================
-// LOAD CALENDAR THEN RENDER TABLE
-// ===============================
 function loadCalendarAndRender(lineData) {
 
     const monthVal = $('#monthInput').val();
@@ -110,11 +102,16 @@ function renderLineCountTable(data) {
     const year  = parseInt($('#yearInput').val(), 10);
 
     const headerRow = document.createElement("tr");
+    //headerRow.innerHTML = `<th class="text-start">Skill Group</th>`;
     headerRow.innerHTML = `<th class="text-start">Skill Group</th>`;
 
     const sample = data[0];
+    //const dayColumns = Object.keys(sample).filter(
+    //    c => c !== "Skill" && c !== "SkillGroup"
+    //);
+
     const dayColumns = Object.keys(sample).filter(
-        c => c !== "Skill" && c !== "SkillGroup"
+        c => c !== "Skill" && c !== "SkillGroup" && c !== "SkillCategory"
     );
 
     currentDays = dayColumns;
@@ -137,6 +134,7 @@ function renderLineCountTable(data) {
     data.forEach(row => {
 
         const tr = document.createElement("tr");
+        //const skillGroup = row.SkillCategory ?? "N/A";
         const skillGroup = row.SkillCategory ?? "N/A";
 
         tr.innerHTML = `<td class="text-start">${skillGroup}</td>`;
@@ -161,9 +159,8 @@ function renderLineCountTable(data) {
     });
 }
 
-// ===============================
+
 // APPLY STD ROW
-// ===============================
 function applySTDToTable(stdData) {
 
     $("#pivotTableBody tr.std-row").remove();
@@ -292,10 +289,10 @@ $("#insertPivotBtn").on("click", function () {
     const $btn = $(this);
     $btn.prop("disabled", true).text("Processing...");
 
-    // ?? Show loading inside tbody
+    // 🔹 Show loading inside tbody
     $("#pivotTableBody").html(`
         <tr>
-            <td colspan="32" class="text-center">
+            <td colspan="31" class="text-center">
                 <div class="spinner-border text-primary" role="status"></div>
                 <div>Loading line count...</div>
             </td>
@@ -319,7 +316,7 @@ $("#insertPivotBtn").on("click", function () {
             } else {
                 $("#pivotTableBody").html(`
                     <tr>
-                        <td colspan="32" class="text-center text-muted">
+                        <td colspan="31" class="text-center text-muted">
                             No data found.
                         </td>
                     </tr>
@@ -329,7 +326,7 @@ $("#insertPivotBtn").on("click", function () {
         error: function (xhr, status, error) {
             $("#pivotTableBody").html(`
                 <tr>
-                    <td colspan="32" class="text-center text-danger">
+                    <td colspan="31" class="text-center text-danger">
                         Error loading data.
                     </td>
                 </tr>

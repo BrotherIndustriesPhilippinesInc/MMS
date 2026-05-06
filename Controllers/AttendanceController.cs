@@ -22,9 +22,57 @@ namespace MMS.Controllers
         {
             try
             {
-                var sql = SqlLoader.Load("Getattendancecout.sql");
+                //var sql = SqlLoader.Load("Getattendancecout.sql");
+                var sql = SqlLoader.Load("Getattendancecout_rev1.sql");
 
                 using (var con =_db.GetConnection())
+                {
+                    await con.OpenAsync();
+
+                    using (var cmd = new SqlCommand(sql, con))
+                    {
+                        cmd.Parameters.AddWithValue("@month1", month);
+                        cmd.Parameters.AddWithValue("@year1", year);
+                        cmd.Parameters.AddWithValue("@agency1", (object?)agency ?? DBNull.Value);
+                        cmd.Parameters.AddWithValue("@shift1", (object?)shift ?? DBNull.Value);
+                        cmd.Parameters.AddWithValue("@costCode1", (object?)costCode ?? DBNull.Value);
+                        cmd.Parameters.AddWithValue("@line1", (object?)line ?? 0);
+
+                        var reader = await cmd.ExecuteReaderAsync();
+
+                        var data = new List<Dictionary<string, object>>();
+
+                        while (await reader.ReadAsync())
+                        {
+                            var row = new Dictionary<string, object>();
+
+                            for (int i = 0; i < reader.FieldCount; i++)
+                            {
+                                row[reader.GetName(i)] = reader.GetValue(i);
+                            }
+
+                            data.Add(row);
+                        }
+
+                        return Json(new { success = true, data });
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, error = ex.Message });
+            }
+        }
+
+        [HttpPost]
+
+        public async Task<IActionResult> GetregisterMP(int month, int year, string agency, string shift, string costCode, long? line)
+        {
+            try
+            {
+                var sql = SqlLoader.Load("Getattendancecout.sql");
+
+                using (var con = _db.GetConnection())
                 {
                     await con.OpenAsync();
 
