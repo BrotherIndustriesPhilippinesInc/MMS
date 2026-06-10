@@ -1,18 +1,18 @@
-﻿--DECLARE
---    @Month INT = @month1,
---    @Year INT = @year1,
---    @Agency NVARCHAR(50) = @agency1,
---    @Shift NVARCHAR(20) = @shift1,
---    @Line BIGINT = @line1,
---   @section NVARCHAR(50) = 'TN';
-
-DECLARE
-    @Month INT = '5',
-    @Year INT = '2026',
-    @Agency NVARCHAR(50) = '',
-    @Shift NVARCHAR(20) = 'Day',
-    @Line BIGINT = '',
+﻿DECLARE
+    @Month INT = @month1,
+    @Year INT = @year1,
+    @Agency NVARCHAR(50) = @agency1,
+    @Shift NVARCHAR(20) = @shift1,
+    @Line BIGINT = @line1,
    @section NVARCHAR(50) = 'TN';
+
+--DECLARE
+--    @Month INT = '6',
+--    @Year INT = '2026',
+--    @Agency NVARCHAR(50) = '',
+--    @Shift NVARCHAR(20) = 'Day',
+--    @Line BIGINT = '',
+--   @section NVARCHAR(50) = 'TN';
 
 
             

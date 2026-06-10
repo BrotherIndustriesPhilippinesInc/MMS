@@ -31,6 +31,7 @@ namespace MMS.Controllers
 
                     using (var cmd = new SqlCommand(sql, con))
                     {
+                        cmd.CommandTimeout = 120;
                         cmd.Parameters.AddWithValue("@month1", month);
                         cmd.Parameters.AddWithValue("@year1", year);
                         cmd.Parameters.AddWithValue("@agency1", (object?)agency ?? DBNull.Value);
@@ -75,9 +76,10 @@ namespace MMS.Controllers
                 using (var con = _db.GetConnection())
                 {
                     await con.OpenAsync();
-
+                   
                     using (var cmd = new SqlCommand(sql, con))
                     {
+                        cmd.CommandTimeout = 120;
                         cmd.Parameters.AddWithValue("@month1", month);
                         cmd.Parameters.AddWithValue("@year1", year);
                         cmd.Parameters.AddWithValue("@agency1", (object?)agency ?? DBNull.Value);

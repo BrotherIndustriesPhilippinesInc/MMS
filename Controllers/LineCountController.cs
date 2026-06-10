@@ -51,6 +51,7 @@ namespace MMS.Controllers
 
                     using (var cmd = new SqlCommand(sql, con))
                     {
+                        cmd.CommandTimeout = 120;
                         cmd.Parameters.AddWithValue("@filterMonth", month);
                         cmd.Parameters.AddWithValue("@filterYear", year);
                         cmd.Parameters.AddWithValue("@agency1", (object?)agency ?? DBNull.Value);
@@ -157,11 +158,8 @@ namespace MMS.Controllers
             }
         }
 
-
         [HttpPost]
         public async Task<IActionResult> UploadSTD(
-            [FromForm] int month,
-            [FromForm] int year,
             [FromForm] string section,
             [FromForm] string shift,
             [FromForm] IFormFile file)
@@ -200,12 +198,25 @@ namespace MMS.Controllers
                             int rowCount = sheet.Dimension.End.Row;
 
                             List<int> days = new List<int>();
+                            string excelMonth = "";
 
-                            // HEADER DAYS
-                            for (int col = 1; col <= colCount; col++)
+                            for (int col = 2; col <= colCount; col++)
                             {
-                                var text = sheet.Cells[1, col].Text;
-                                days.Add(int.TryParse(text, out int d) ? d : 0);
+                                object value = sheet.Cells[1, col].Value;
+
+                                if (value is DateTime dt)
+                                {
+                                    days.Add(dt.Day);
+
+                                    if (string.IsNullOrEmpty(excelMonth))
+                                    {
+                                        excelMonth = dt.ToString("MM");
+                                    }
+                                }
+                                else
+                                {
+                                    days.Add(0);
+                                }
                             }
 
                             // FIND TARGET ROW
@@ -238,22 +249,21 @@ namespace MMS.Controllers
                             ", conn);
 
                                 insertCmd.Parameters.Add("@section", NpgsqlTypes.NpgsqlDbType.Varchar);
-                                insertCmd.Parameters.Add("@month", NpgsqlTypes.NpgsqlDbType.Varchar); // match DB
+                                insertCmd.Parameters.Add("@month", NpgsqlTypes.NpgsqlDbType.Varchar); 
                                 insertCmd.Parameters.Add("@day", NpgsqlTypes.NpgsqlDbType.Integer);
                                 insertCmd.Parameters.Add("@std", NpgsqlTypes.NpgsqlDbType.Integer);
                                 insertCmd.Parameters.Add("@stdType", NpgsqlTypes.NpgsqlDbType.Varchar);
                                 insertCmd.Parameters.Add("@user", NpgsqlTypes.NpgsqlDbType.Varchar);
-
-                                for (int col = 1; col <= colCount; col++)
+                                for (int col = 2; col <= colCount; col++)
                                 {
-                                    int day = days[col - 1];
+                                    int day = days[col - 2];
                                     if (day == 0) continue;
 
                                     var text = sheet.Cells[targetRow, col].Text;
                                     int std = int.TryParse(text, out int temp) ? temp : 0;
 
                                     insertCmd.Parameters["@section"].Value = section;
-                                    insertCmd.Parameters["@month"].Value = month.ToString();
+                                    insertCmd.Parameters["@month"].Value = excelMonth;
                                     insertCmd.Parameters["@day"].Value = day;
                                     insertCmd.Parameters["@std"].Value = std;
                                     insertCmd.Parameters["@stdType"].Value = stdType;

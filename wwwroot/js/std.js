@@ -2,18 +2,64 @@ $(document).ready(function () {
 
     let attendanceChart = null;
 
-    function buildAttendanceTable(data, calendarData) {
-        const metricLabels = {
-            'Register MP': 'Register MP',
-            'Actual': 'Present (Actual)',
-            'Absent': 'Absent',
-            'RS_Count': 'RS (Resigned)',
-            'ML_Count': 'ML Count',
-            'NW_Count': 'NW Count (No Work)',
-            'AbsentRate': 'Absent Rate'
-        };
+    let cachedAttendanceData = [];
+    let cachedCalendarData = [];
+    function getSelectedFilter() {
+        if ($('#direct_filter').is(':checked')) return 'DIRECT';
+        if ($('#kit_filter').is(':checked')) return 'KIT';
+        if ($('#mso_filter').is(':checked')) return 'MSO';
+        return 'ALL';
+    }
 
-        let headerHTML = '<th rowspan="2">Metric / Day</th>';
+    function buildAttendanceTable(data, calendarData) {
+
+        const filter = getSelectedFilter();
+        let metricLabels = {};
+
+        if (filter === 'DIRECT') {
+            metricLabels = {
+                'Registered_Direct': 'Register MP (Direct)',
+                'Direct_Actual': 'Present (Direct)',
+                'Direct_AB_Count': 'Absent (Direct)',
+                'Direct_ML_Count': 'ML Count (Direct)',
+                'Direct_NW_Count': 'NW Count (Direct)'
+            };
+        }
+        else {
+            //metricLabels = {
+            //    'Register MP': 'Register MP',
+            //    'Actual': 'Present (Actual)',
+            //    'Absent': 'Absent',
+            //    'RS_Count': 'RS (Resigned)',
+            //    'ML_Count': 'ML Count',
+            //    'NW_Count': 'NW Count (No Work)',
+            //    'AbsentRate': 'Absent Rate'
+            //};
+            metricLabels = {
+                'Register MP': 'Register MP',
+                'Actual': 'Present (Actual)',
+                'Absent': 'Absent',
+                'RS_Count': 'RS (Resigned)',
+                'ML_Count': 'ML Count',
+                'NW_Count': 'NW Count (No Work)',
+                'AbsentRate': 'Absent Rate'
+              
+            };
+        }
+
+    
+        //let headerHTML = '<th rowspan="2">Metric / Day</th>';
+        let headerHTML = `
+                <th rowspan="2"
+                    style="
+                        position:sticky;
+                        left:0;
+                        z-index:10;
+                        background:#f8f9fa;
+                        min-width:180px;
+                    ">
+                    Metric / Day
+                </th>`;
         let subHeaderHTML = '';
 
         const today = new Date();
@@ -24,19 +70,54 @@ $(document).ready(function () {
         const selectedMonth = parseInt($('#monthInput').val(), 10) - 1;
         const selectedYear = parseInt($('#yearInput').val(), 10);
 
+        const forecastMatrix = [
+            {
+                forecastStart: new Date(selectedYear, 5, 9),
+                forecastEnd: new Date(selectedYear, 5, 11),
+                historyStart: new Date(selectedYear, 4, 11),
+                historyEnd: new Date(selectedYear, 4, 22)
+            },
+            {
+                forecastStart: new Date(selectedYear, 5, 15),
+                forecastEnd: new Date(selectedYear, 5, 19),
+                historyStart: new Date(selectedYear, 4, 18),
+                historyEnd: new Date(selectedYear, 4, 29)
+            },
+            {
+                forecastStart: new Date(selectedYear, 5, 22),
+                forecastEnd: new Date(selectedYear, 5, 26),
+                historyStart: new Date(selectedYear, 4, 25),
+                historyEnd: new Date(selectedYear, 5, 5)
+            },
+            {
+                forecastStart: new Date(selectedYear, 5, 29),
+                forecastEnd: new Date(selectedYear, 6, 3),
+                historyStart: new Date(selectedYear, 5, 1),
+                historyEnd: new Date(selectedYear, 5, 12)
+            }
+        ];
+
         let todayColIndex = -1;
         const isCurrentMonth = (selectedMonth === todayMonth && selectedYear === todayYear);
 
         // CALENDAR MAP
+        //const calendarMap = {};
+        //if (calendarData && calendarData.length > 0) {
+        //    calendarData.forEach(c => {
+        //        const day = parseInt(c.day, 10);
+        //        calendarMap[day] = c;
+        //    });
+        //}
         const calendarMap = {};
-        if (calendarData && calendarData.length > 0) {
-            calendarData.forEach(c => {
-                const day = parseInt(c.day, 10);
-                calendarMap[day] = c;
-            });
-        }
 
-        // COLOR FUNCTION
+        calendarData.forEach(c => {
+
+            const key =
+                c.Month + "_" + parseInt(c.day, 10);
+
+            calendarMap[key] = c;
+        });
+
         function getCalendarStyle(type) {
             switch (type) {
                 case -1: return 'background-color:#ffffff';
@@ -48,10 +129,9 @@ $(document).ready(function () {
             }
         }
 
-        // ABSENT RATE CALC
         function computeAbsentRate(dayData) {
             let absent = parseFloat(dayData['Absent'] || 0);
-            let ml = parseFloat(dayData['MLCount'] || 0);
+            let ml = parseFloat(dayData['ML_Count'] || 0);
             let register = parseFloat(dayData['Register MP'] || 0);
 
             if (register <= 0) return 0;
@@ -59,12 +139,18 @@ $(document).ready(function () {
             return ((absent + ml) / register) * 100;
         }
 
-        // ✅ FIND TODAY COLUMN
+        // FIND TODAY COLUMN
         if (isCurrentMonth) {
 
             data.forEach((dayData, index) => {
+
                 const day = parseInt(dayData.MonthDay, 10);
-                if (day === todayDay) {
+                const month = parseInt(dayData.Month, 10) - 1;
+
+                if (
+                    day === todayDay &&
+                    month === todayMonth
+                ) {
                     todayColIndex = index;
                 }
             });
@@ -76,94 +162,310 @@ $(document).ready(function () {
             const actualColspan = todayColIndex + 1;
             const forecastColspan = data.length - actualColspan;
 
-            headerHTML += `<th colspan="${actualColspan}" style="background-color:brown;color:white;text-align:center;">ACTUAL</th>`;
+            headerHTML += `
+        <th colspan="${actualColspan}"
+            style="background-color:brown;color:white;text-align:center;">
+            ACTUAL
+        </th>`;
 
             if (forecastColspan > 0) {
-                headerHTML += `<th colspan="${forecastColspan}" style="background-color:purple;color:white;text-align:center;">FORECASTED</th>`;
+                headerHTML += `
+            <th colspan="${forecastColspan}"
+                style="background-color:purple;color:white;text-align:center;">
+                FORECASTED
+            </th>`;
             }
-
         } else {
             headerHTML += `<th colspan="${data.length}" style="background-color:brown;color:white;text-align:center;">ACTUAL</th>`;
         }
 
+        //function computeForecastAbsentRate() {
+
+        //    const historyRates = [];
+
+        //    for (let i = todayColIndex; i >= 0; i--) {
+
+        //        const dayData = data[i];
+
+        //        const day = parseInt(dayData.MonthDay, 10);
+
+        //        const calendarKey =
+        //            dayData.Month + "_" + day;
+
+        //        const calendar =
+        //            calendarMap[calendarKey];
+
+        //        if (!calendar)
+        //            continue;
+
+        //        if (calendar.type !== -1)
+        //            continue;
+
+        //        let absent =
+        //            parseFloat(dayData['Absent'] || 0);
+
+        //        let ml =
+        //            parseFloat(dayData['ML_Count'] || 0);
+
+        //        let register =
+        //            parseFloat(dayData['Register MP'] || 0);
+
+        //        if (register <= 0)
+        //            continue;
+
+        //        const rate =
+        //            ((absent + ml) / register) * 100;
+
+        //        historyRates.push(rate);
+
+        //        if (historyRates.length >= 10)
+        //            break;
+        //    }
+
+        //    if (historyRates.length === 0)
+        //        return 0;
+
+        //    return historyRates.reduce((a, b) => a + b, 0)
+        //        / historyRates.length;
+        //}
+
+          function computeForecastMetric(metricName) {
+
+            const history = [];
+
+            for (let i = todayColIndex; i >= 0; i--) {
+
+                const dayData = data[i];
+
+                const day = parseInt(dayData.MonthDay, 10);
+
+                const calendarKey =
+                    dayData.Month + "_" + day;
+
+                const calendar =
+                    calendarMap[calendarKey];
+
+                if (!calendar)
+                    continue;
+
+                // Only use normal working days
+                if (calendar.type !== -1)
+                    continue;
+
+                const value =
+                    parseFloat(dayData[metricName] || 0);
+
+                history.push(value);
+
+                if (history.length >= 10)
+                    break;
+            }
+
+            if (history.length === 0)
+                return 0;
+
+            return history.reduce((a, b) => a + b, 0) /
+                history.length;
+        }
+        function getForecastValue(metricName, forecastDate) {
+
+            const matrix = forecastMatrix.find(m =>
+                forecastDate >= m.forecastStart &&
+                forecastDate <= m.forecastEnd
+            );
+
+            if (!matrix)
+                return 0;
+
+            const values = [];
+
+            data.forEach(dayData => {
+
+                const dataDate = new Date(
+                    selectedYear,
+                    parseInt(dayData.Month) - 1,
+                    parseInt(dayData.MonthDay)
+                );
+
+                if (
+                    dataDate >= matrix.historyStart &&
+                    dataDate <= matrix.historyEnd
+                ) {
+
+                    const value =
+                        parseFloat(dayData[metricName] || 0);
+
+                    values.push(value);
+                }
+            });
+
+            if (values.length === 0)
+                return 0;
+
+            return values.reduce((a, b) => a + b, 0)
+                / values.length;
+        }
+
+        function getForecastAbsentRate(forecastDate) {
+
+            const forecastAbsent =
+                getForecastValue(
+                    'Absent',
+                    forecastDate
+                );
+
+            const forecastML =
+                getForecastValue(
+                    'ML_Count',
+                    forecastDate
+                );
+
+            const forecastRegister =
+                getForecastValue(
+                    'Register MP',
+                    forecastDate
+                );
+
+            if (
+                forecastRegister <= 0
+            ) {
+                return null;
+            }
+
+            return (
+                (
+                    forecastAbsent +
+                    forecastML
+                ) /
+                forecastRegister
+            ) * 100;
+        }
+
+        //const forecastAbsentRate =
+        //    getForecastValue();
+        //const forecastAbsentRate = 0;
+
+
+        const forecastPresent =
+            computeForecastMetric('Actual');
+
+        const forecastAbsent =
+            computeForecastMetric('Absent');
+
+        const forecastRS =
+            computeForecastMetric('RS_Count');
+
         $('#headerRow').html(headerHTML);
 
-        // ✅ SUB HEADER
         data.forEach((dayData) => {
 
             const day = parseInt(dayData.MonthDay, 10);
-            const dateObj = new Date(selectedYear, selectedMonth, day);
 
-            const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-            const dayName = dayNames[dateObj.getDay()];
+            const actualMonth =
+                parseInt(dayData.Month, 10) - 1;
+
+            const dateObj =
+                new Date(
+                    selectedYear,
+                    actualMonth,
+                    day
+                );
+
+            const dayNames =
+                ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+            const dayName =
+                dayNames[dateObj.getDay()];
+
+            const displayLabel =
+                dayData.DisplayDay || day;
 
             let style = '';
 
-            if (calendarMap[day]) {
-                style = getCalendarStyle(calendarMap[day].type);
+            const calendarKey =
+                dayData.Month + "_" + day;
+
+            if (calendarMap[calendarKey]) {
+                style =
+                    getCalendarStyle(
+                        calendarMap[calendarKey].type
+                    );
             }
 
-            subHeaderHTML += `<th style="${style}">${dayName}<br>${day}</th>`;
+            subHeaderHTML += `
+        <th style="${style}">
+            ${displayLabel}
+            <br>
+            ${dayName}
+        </th>
+    `;
         });
 
         $('#subHeaderRow').html(subHeaderHTML);
 
-        // ✅ BODY
+        // BODY
         let bodyHTML = '';
+
 
         for (const [key, label] of Object.entries(metricLabels)) {
 
-            let row = `<tr><td class="fw-bold">${label}</td>`;
+            //let row = `<tr><td class="fw-bold">${label}</td>`;
+            let row = `<tr><td class="fw-bold metric-column">${label}</td>`;
 
             data.forEach((dayData, index) => {
+
+                if (key === 'ForecastedAbsentRate') {
+
+                    let value = '';
+
+                    if (isCurrentMonth && index > todayColIndex) {
+
+                        //value =
+                        //    forecastAbsentRate.toFixed(2) + '%';
+                        value =
+                            forecastAbsentRate >= 100
+                                ? '-'
+                                : forecastAbsentRate.toFixed(2) + '%';
+
+                    } else {
+
+                        value = '-';
+                    }
+
+                    row += `<td>${value}</td>`;
+                    return;
+                }
 
                 let value = dayData[key];
                 let styles = [];
 
+                //const day = parseInt(dayData.MonthDay, 10);
+                //const calendar = calendarMap[day];
                 const day = parseInt(dayData.MonthDay, 10);
-                const calendar = calendarMap[day];
 
-                // APPLY COLOR
+                const calendarKey =
+                    dayData.Month + "_" + day;
+
+                const calendar =
+                    calendarMap[calendarKey];
+
                 if (calendar) {
                     styles.push(getCalendarStyle(calendar.type));
                 }
 
-                //ABSENT RATE LOGIC
+                //if (key === 'AbsentRate') {
+                //    let rate = computeAbsentRate(dayData);
+                //    value = rate.toFixed(2) + '%';
+                    //}
                 if (key === 'AbsentRate') {
 
-                    let rate = 0;
+                    let rate =
+                        computeAbsentRate(dayData);
 
-                    //NOT working day → 0
-                    if (calendar && calendar.type == -1) {
-
-                        //ACTUAL
-                        if (!isCurrentMonth || index <= todayColIndex) {
-                            rate = computeAbsentRate(dayData);
-                        }
-                        //FORECAST
-                        else {
-
-                            let total = 0;
-                            let count = 0;
-
-                            for (let i = index - 1; i >= 0 && count < 10; i--) {
-
-                                const prevDay = parseInt(data[i].MonthDay, 10);
-                                const prevCal = calendarMap[prevDay];
-
-                                if (prevCal && prevCal.type == -1) {
-                                    total += computeAbsentRate(data[i]);
-                                    count++;
-                                }
-                            }
-
-                            if (count > 0) {
-                                rate = total / count;
-                            }
-                        }
-                    }
-
-                    value = rate.toFixed(2) + '%';
+                    value =
+                        rate >= 100
+                            ? '-'
+                            : rate.toFixed(2) + '%';
                 }
                 else if (value == null) {
                     value = '0';
@@ -172,15 +474,17 @@ $(document).ready(function () {
                     value = parseInt(value, 10);
                 }
 
-                // TODAY HIGHLIGHT (no override)
                 if (isCurrentMonth && index === todayColIndex) {
                     styles.push('outline:2px solid #2e7d32;font-weight:bold');
                 }
 
-                //row += `<td style="${styles.join(';')}">${value}</td>`;
-                if (key === 'Absent') {
+                // ✅ ABSENT BREAKDOWN (FIXED FOR DIRECT)
+                if (key === 'Absent' || key === 'Direct_AB_Count') {
 
-                    const ab = parseInt(dayData['AB_Count'] || 0);
+                    const ab = (filter === 'DIRECT')
+                        ? parseInt(dayData['Direct_AB_Count'] || 0)
+                        : parseInt(dayData['AB_Count'] || 0);
+
                     const sl = parseInt(dayData['SL_Count'] || 0);
                     const vl = parseInt(dayData['VL_Count'] || 0);
 
@@ -196,299 +500,335 @@ $(document).ready(function () {
                                 VL: ${vl}
                             </div>
                         </td>
-                        `;
-
+                    `;
                 } else {
                     row += `<td style="${styles.join(';')}">${value}</td>`;
                 }
+
             });
 
             row += '</tr>';
             bodyHTML += row;
         }
 
+        let forecastRow =
+            `<tr>
+                <td class="fw-bold text-primary">
+                    Forecasted Absent Rate
+                </td>`;
+
+        data.forEach((dayData, index) => {
+
+            let value = '';
+
+            if (index > todayColIndex) {
+
+                //value =
+                //    forecastAbsentRate.toFixed(2) + '%';
+                const forecastDate =
+                    new Date(
+                        selectedYear,
+                        parseInt(dayData.Month) - 1,
+                        parseInt(dayData.MonthDay)
+                    );
+
+                const forecastRate =
+                    getForecastAbsentRate(
+                        forecastDate
+                    );
+
+                value =
+                    forecastRate == null
+                        ? ''
+                        : forecastRate >= 100
+                            ? '-'
+                            : forecastRate.toFixed(2) + '%';
+            }
+
+            forecastRow += `
+        <td style="font-weight:bold;color:#6a1b9a;">
+            ${value}
+        </td>`;
+        });
+
+        forecastRow += '</tr>';
+
+        bodyHTML += forecastRow;
+
+        let forecastPresentRow = `
+<tr>
+    <td class="fw-bold text-success">
+        Forecasted Present
+    </td>`;
+
+        data.forEach((dayData, index) => {
+
+            let value = '';
+
+            if (index > todayColIndex) {
+
+                //value =
+                //    Math.round(forecastPresent);
+                const forecastDate =
+                    new Date(
+                        selectedYear,
+                        parseInt(dayData.Month) - 1,
+                        parseInt(dayData.MonthDay)
+                    );
+
+                value =
+                    Math.round(
+                        getForecastValue(
+                            'Actual',
+                            forecastDate
+                        )
+                    );
+            }
+
+            forecastPresentRow += `
+        <td style="font-weight:bold;color:green;">
+            ${value}
+        </td>`;
+        });
+
+        forecastPresentRow += '</tr>';
+
+
+
+        bodyHTML += forecastPresentRow;
+
+        let forecastAbsentRow = `
+<tr>
+    <td class="fw-bold text-danger">
+        Forecasted Absent
+    </td>`;
+
+        data.forEach((dayData, index) => {
+
+            let value = '';
+
+            if (index > todayColIndex) {
+                const forecastDate =
+                    new Date(
+                        selectedYear,
+                        parseInt(dayData.Month) - 1,
+                        parseInt(dayData.MonthDay)
+                    );
+
+                value =
+                    Math.round(
+                        getForecastValue(
+                            'Absent',
+                            forecastDate
+                        )
+                    );
+            }
+
+            forecastAbsentRow += `
+        <td style="font-weight:bold;color:red;">
+            ${value}
+        </td>`;
+        });
+
+        forecastAbsentRow += '</tr>';
+
+        bodyHTML += forecastAbsentRow;
+
+        let forecastRSRow = `
+<tr>
+    <td class="fw-bold text-warning">
+        Forecasted RS
+    </td>`;
+
+        data.forEach((dayData, index) => {
+
+            let value = '';
+
+            if (index > todayColIndex) {
+
+                const forecastDate =
+                    new Date(
+                        selectedYear,
+                        parseInt(dayData.Month) - 1,
+                        parseInt(dayData.MonthDay)
+                    );
+
+                value =
+                    Math.round(
+                        getForecastValue(
+                            'RS_Count',
+                            forecastDate
+                        )
+                    );
+            }
+
+            forecastRSRow += `
+        <td style="font-weight:bold;color:#ff9800;">
+            ${value}
+        </td>`;
+        });
+
+        forecastRSRow += '</tr>';
+
+        bodyHTML += forecastRSRow;
+
         $('#tableBody').html(bodyHTML);
         Swal.close();
     }
 
-    // CLICK TOGGLE ABSENT DETAILS
+    // CLICK ABSENT BREAKDOWN
     $(document).off('click', '.absent-cell').on('click', '.absent-cell', function () {
         $(this).siblings('.absent-breakdown').toggleClass('d-none');
     });
 
-    //VIEW TOGGLE
-    $('#viewToggle').on('change', function () {
-        if ($(this).is(':checked')) {
-            $('#graphView').removeClass('d-none');
-            $('#attendanceTable').closest('.card').addClass('d-none');
-        } else {
-            $('#graphView').addClass('d-none');
-            $('#attendanceTable').closest('.card').removeClass('d-none');
+    // FILTER CHANGE (NO API CALL)
+    $('.filter-container input[type="checkbox"]').on('change', function () {
+
+        $('.filter-container input').not(this).prop('checked', false);
+
+        if (cachedAttendanceData.length > 0) {
+            buildAttendanceTable(cachedAttendanceData, cachedCalendarData);
         }
     });
 
-    // BUTTON
+    // LOAD BUTTON (ONLY PLACE THAT CALLS SQL)
     $('#insertPivotBtn').on('click', function () {
 
-        const monthVal = $('#monthInput').val();
         const yearVal = $('#yearInput').val();
         const shiftVal = $('#shiftInput').val();
         const costCodeVal = $('#costCodeInput').val();
 
-        if (!monthVal || !yearVal || !shiftVal || !costCodeVal) {
+        if (!yearVal || !shiftVal || !costCodeVal) {
             Swal.fire('Error', 'Please fill in all required fields.', 'error');
             return;
         }
 
         const $btn = $(this);
+
         $btn.prop('disabled', true).text('Processing...');
 
         $('#headerRow').html('');
 
-        // SHOW LOADING INSIDE TBODY
         $('#tableBody').html(`
         <tr>
             <td colspan="100%" class="text-center">
-                <div class="spinner-border text-primary" role="status"></div>
+                <div class="spinner-border text-primary"></div>
                 <div>Loading attendance...</div>
             </td>
         </tr>
     `);
 
-        $.ajax({
-            url: 'Attendance/GetCalendar',
-            method: 'GET',
-            data: { month: monthVal, year: yearVal },
-            dataType: 'json',
-            success: function (calendarData) {
+        const monthsToLoad = [5, 6, 7, 8]; // May-August
 
-                // FIRST CALL → Attendance
-                $.ajax({
-                    url: 'Attendance/GetAttendanceCount',
-                    method: 'POST',
-                    dataType: 'json',
-                    data: {
-                        month: monthVal,
-                        year: yearVal,
-                        shift: shiftVal,
-                        costCode: costCodeVal
-                    },
-                    success: function (attendanceRes) {
+        let allAttendanceData = [];
+        let allCalendarData = [];
+        let completedRequests = 0;
+        let totalRequests = monthsToLoad.length * 2;
 
-                        if (!attendanceRes.success) {
-                            alert('Error loading attendance');
-                            return;
-                        }
+        monthsToLoad.forEach(function (month) {
 
-                        // SECOND CALL → Register MP
-                        $.ajax({
-                            url: 'Attendance/GetregisterMP',
-                            method: 'POST',
-                            dataType: 'json',
-                            data: {
-                                month: monthVal,
-                                year: yearVal,
-                                shift: shiftVal,
-                                costCode: costCodeVal
-                            },
-                            success: function (registerRes) {
+            // CALENDAR
+            $.ajax({
+                url: 'Attendance/GetCalendar',
+                method: 'GET',
+                data: {
+                    month: month,
+                    year: yearVal
+                },
+                dataType: 'json',
+                success: function (calendarData) {
 
-                                if (!registerRes.success) {
-                                    alert('Error loading Register MP');
-                                    return;
-                                }
+                    calendarData.forEach(c => {
+                        c.Month = month;
+                    });
 
-                                let attendanceData = attendanceRes.data;
-                                let registerData = registerRes.data;
+                    allCalendarData =
+                        allCalendarData.concat(calendarData);
+                },
+                complete: function () {
 
-                                // ✅ MERGE DATA HERE
-                                attendanceData.forEach((day, index) => {
-                                    if (registerData[index]) {
-                                        day['Register MP'] = registerData[index]['Register MP'];
-                                    }
-                                });
+                    completedRequests++;
 
-                                // ✅ FINAL CALL
-                                buildAttendanceTable(attendanceData, calendarData);
-                            },
-                            error: function () {
-                                alert('Error loading Register MP');
-                            }
+                    if (completedRequests === totalRequests) {
+                        finishLoading();
+                    }
+                }
+            });
+
+            // ATTENDANCE
+            $.ajax({
+                url: 'Attendance/GetAttendanceCount',
+                method: 'POST',
+                dataType: 'json',
+                data: {
+                    month: month,
+                    year: yearVal,
+                    shift: shiftVal,
+                    costCode: costCodeVal
+                },
+                success: function (attendanceRes) {
+
+                    if (attendanceRes.success &&
+                        attendanceRes.data &&
+                        attendanceRes.data.length > 0) {
+
+                        attendanceRes.data.forEach(row => {
+
+                            row.Month = month;
+
+                            const monthName =
+                                new Date(yearVal, month - 1, 1)
+                                    .toLocaleString('default', {
+                                        month: 'short'
+                                    });
+
+                            row.DisplayDay =
+                                monthName + '-' + row.MonthDay;
                         });
 
-                    },
-                    error: function () {
-                        alert('Error loading attendance');
+                        allAttendanceData =
+                            allAttendanceData.concat(
+                                attendanceRes.data
+                            );
                     }
-                });
+                },
+                complete: function () {
 
-            },
-            error: function () {
-                $('#tableBody').html(`
-            <tr>
-                <td colspan="100%" class="text-center text-danger">
-                    Failed to fetch calendar data.
-                </td>
-            </tr>
-        `);
-            },
-            complete: function () {
-                $btn.prop('disabled', false).text('Load');
-            }
+                    completedRequests++;
+
+                    if (completedRequests === totalRequests) {
+                        finishLoading();
+                    }
+                }
+            });
+
         });
+
+    
+
+        function finishLoading() {
+
+            allAttendanceData.sort(function (a, b) {
+
+                if (a.Month !== b.Month) {
+                    return a.Month - b.Month;
+                }
+
+                return parseInt(a.MonthDay) -
+                    parseInt(b.MonthDay);
+            });
+
+            cachedAttendanceData = allAttendanceData;
+            cachedCalendarData = allCalendarData;
+
+            buildAttendanceTable(
+                cachedAttendanceData,
+                cachedCalendarData
+            );
+
+            $btn.prop('disabled', false).text('Load');
+        }
 
     });
 
 });
-// function buildAttendanceChart(data) {
-
-//         const labels = [];
-//         const registerMP = [];
-//         const present = [];
-//         const lacking = [];
-//         const mlCount = [];
-//         const nwCount = [];
-
-//         data.forEach(d => {
-//             labels.push(d.MonthDay);
-//             registerMP.push(d["Register MP"]);
-//             present.push(d.Actual);
-//             lacking.push(d.Lacking);
-//             mlCount.push(d.MLCount);
-//             nwCount.push(d.NWCount);
-//         });
-
-//         const ctx = document.getElementById('attendanceChart').getContext('2d');
-
-//         if (attendanceChart) attendanceChart.destroy();
-
-//         attendanceChart = new Chart(ctx, {
-//             data: {
-//                 labels: labels,
-//                 datasets: [
-//                     {
-//                         type: 'bar',
-//                         label: 'Register MP',
-//                         data: registerMP,
-//                         backgroundColor: '#6c757d',
-//                         stack: 'stack1'
-//                     },
-//                     {
-//                         type: 'bar',
-//                         label: 'Present (Actual)',
-//                         data: present,
-//                         backgroundColor: '#198754',
-//                         stack: 'stack1'
-//                     },
-//                     {
-//                         type: 'bar',
-//                         label: 'Lacking',
-//                         data: lacking,
-//                         backgroundColor: '#dc3545',
-//                         stack: 'stack1'
-//                     },
-//                     {
-//                         type: 'bar',
-//                         label: 'ML Count',
-//                         data: mlCount,
-//                         backgroundColor: '#0d6efd',
-//                         stack: 'stack1'
-//                     },
-//                     {
-//                         type: 'bar',
-//                         label: 'NW Count (No Work)',
-//                         data: nwCount,
-//                         backgroundColor: '#ffc107',
-//                         stack: 'stack1'
-//                     }
-//                 ]
-//             },
-//             options: {
-//                 responsive: true,
-//                 interaction: { mode: 'index', intersect: false },
-//                 scales: {
-//                     x: { stacked: true },
-//                     y: {
-//                         stacked: true,
-//                         title: { display: true, text: 'Manpower Count' }
-//                     }
-//                 },
-//                 plugins: { legend: { position: 'top' } }
-//             }
-//         });
-//     }
-
-    $('#viewToggle').on('change', function () {
-        if ($(this).is(':checked')) {
-            $('#graphView').removeClass('d-none');
-            $('#attendanceTable').closest('.card').addClass('d-none');
-        } else {
-            $('#graphView').addClass('d-none');
-            $('#attendanceTable').closest('.card').removeClass('d-none');
-        }
-    });
-
-
-// $(document).ready(function () {
-//     loadAbsentRate();
-// });<script>
-// $(document).ready(function () {
-    
-// });
-
-function loadAbsentRateSmall() {
-    $.ajax({
-        url: "Controller/std_class.php?action=get_absentrate", // adjust path
-        method: "GET",
-        dataType: "json",
-        success: function (res) {
-            if (!res.success) {
-                console.error(res.error);
-                return;
-            }
-            renderAbsentRateCardsSmall(res.data);
-        },
-        error: function (xhr) {
-            console.error(xhr.responseText);
-        }
-    });
-}
-
-function renderAbsentRateCardsSmall(data) {
-    const container = $("#absentRateContainerSmall");
-    container.empty();
-
-    if (!data || data.length === 0) {
-        container.append(`<div class="col-12 text-center">No data available</div>`);
-        return;
-    }
-
-    data.forEach(row => {
-        const rate = parseFloat(row.AbsentRate || 0).toFixed(2);
-        const progressWidth = Math.min(rate, 100);
-
-        const card = `
-        <div class="col-xl-3 col-lg-4 col-md-6 col-sm-12 mb-2">
-            <div class="card text-dark bg-light small-card">
-                <div class="card-body p-2">
-                    <div class="d-flex justify-content-between align-items-center mb-1">
-                        <strong>${row.GroupSection}</strong>
-                        <span class="small">${rate}%</span>
-                    </div>
-                    <div class="progress mb-1" style="height:6px;">
-                        <div class="progress-bar bg-info" role="progressbar"
-                             style="width:${progressWidth}%"
-                             aria-valuenow="${progressWidth}" aria-valuemin="0" aria-valuemax="100">
-                        </div>
-                    </div>
-                    <div class="small text-muted">
-                        Reg: ${row.RegisterMP} | Pres: ${row.Present} | Abs: ${row.Absent}
-                    </div>
-                </div>
-            </div>
-        </div>`;
-        
-        container.append(card);
-    });
-}
-

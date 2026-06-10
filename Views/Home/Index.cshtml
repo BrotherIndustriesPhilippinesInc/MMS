@@ -66,11 +66,82 @@
     </div>
 </div>
 
+@* <div class="card mb-4"> *@
+@*     <div class="card-header"> *@
+@*         <h6 class="mb-0"> *@
+@*             <button class="btn btn-link text-decoration-none p-0" *@
+@*                     type="button" *@
+@*                     data-bs-toggle="collapse" *@
+@*                     data-bs-target="#standardManpowerCollapse" *@
+@*                     aria-expanded="false" *@
+@*                     aria-controls="standardManpowerCollapse"> *@
+@*                 Standard Manpower Upload *@
+@*             </button> *@
+@*         </h6> *@
+@*     </div> *@
+
+@*     <div class="collapse" id="standardManpowerCollapse"> *@
+@*         <div class="card-body"> *@
+@*             <div class="row g-3"> *@
+@*                 <!-- Upload STD (Excel) --> *@
+@*                 <div class="col-md-6"> *@
+@*                     <label for="stdFile" class="form-label"> *@
+@*                         Upload STD (Excel) *@
+@*                     </label> *@
+@*                     <input type="file" *@
+@*                            id="stdFile" *@
+@*                            class="form-control" *@
+@*                            accept=".xls,.xlsx"> *@
+@*                 </div> *@
+@*             </div> *@
+@*         </div> *@
+@*     </div> *@
+@* </div> *@
 <!-- LEGEND -->
 <div class="card mb-4 legend-box">
     <div class="card-body">
-        <h6 class="card-title">Attendance Legend</h6>
 
+        <!-- Header -->
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="card-title mb-0">Attendance Legend</h6>
+
+            <!-- Settings Dropdown -->
+            <div class="dropdown">
+                <button class="btn btn-light border d-flex align-items-center gap-2 shadow-sm"
+                        type="button"
+                        id="settingsDropdown"
+                        data-bs-toggle="dropdown"
+                        aria-expanded="false">
+
+                    <img src="~/lib/images/settings.png"
+                         width="18"
+                         height="18"
+                         alt="Settings">
+
+                    <span class="fw-medium">Settings</span>
+                </button>
+
+                <ul class="dropdown-menu dropdown-menu-end"
+                    aria-labelledby="settingsDropdown">
+                    <li>
+                        <a class="dropdown-item"
+                           href="#"
+                           data-bs-toggle="modal"
+                           data-bs-target="#standardManpowerModal">
+                          Upload
+                        </a>
+                        <a class="dropdown-item"
+                           href="#"
+                           data-bs-toggle="modal"
+                           data-bs-target="#templateModal">
+                            Template
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Legend Content -->
         <div class="d-flex gap-4 flex-wrap mb-3">
             <span class="legend-text text-danger">■ Lacking MP</span>
             <span class="legend-text text-primary">■ Excess MP</span>
@@ -88,6 +159,52 @@
     </div>
 </div>
 
+<!-- Upload Modal -->
+<div class="modal fade" id="standardManpowerModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <h5 class="modal-title">Upload</h5>
+                <button type="button"
+                        class="btn-close"
+                        data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body">
+                <label for="stdFile" class="form-label">
+                    Upload STD (Excel)
+                </label>
+                <input type="file"
+                       id="stdFile"
+                       class="form-control"
+                       accept=".xls,.xlsx">
+            </div>
+
+        </div>
+    </div>
+</div>
+
+
+<!-- Template Modal -->
+<div class="modal fade" id="templateModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <h5 class="modal-title">Upload</h5>
+                <button type="button"
+                        class="btn-close"
+                        data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body">
+                   <a class="btn btn-success" style="width:100%" href="~/templates/STD_MMS.xlsx">Stadard Manpower Template</a>
+            </div>
+
+        </div>
+    </div>
+</div>
 <!-- TABS -->
 <ul class="nav nav-tabs mb-3">
     <li class="nav-item">
@@ -115,11 +232,11 @@
         cursor: pointer;
     }
 
-        .filter-item input[type="checkbox"] {
-            width: 16px;
-            height: 16px;
-            cursor: pointer;
-        }
+    .filter-item input[type="checkbox"] {
+        width: 16px;
+        height: 16px;
+        cursor: pointer;
+    }
 
     .highlight {
         font-weight: 600;
@@ -132,7 +249,6 @@
     }
 </style>
 <div class="tab-content">
-
     <!-- ATTENDANCE -->
     <div class="tab-pane fade show active" id="tab-attendance">
 
@@ -165,7 +281,9 @@
                 </div>
                
 
-                <div class="table-responsive" style="max-height:500px; overflow:auto;">
+                @* <div class="table-responsive" style="max-height:500px; overflow:auto;"> *@
+                <div class="table-responsive"
+                     style="max-height:500px; overflow:auto;">
                     <table class="table table-bordered table-sm" id="attendanceTable">
                         <thead>
                             <tr id="headerRow"></tr>
@@ -178,29 +296,9 @@
             </div>
         </div>
 
-
         <div class="card mb-4">
             <div class="card-body">
-                <h6 class="card-title">Standard Manpower Upload</h6>
-                <div class="row g-3">
-                    <!-- Upload STD (Excel) -->
-                    <div class="col-md-6">
-                        <label for="stdFile" class="form-label">
-                            Upload STD (Excel)
-                        </label>
-                        <input type="file"
-                               id="stdFile"
-                               class="form-control"
-                               accept=".xls,.xlsx">
-                    </div>
-                </div>
-
-            </div>
-        </div>
-
-        <div class="card mb-4">
-            <div class="card-body">
-                <h6 class="card-title title-green">Process Summary (Original Tap)</h6>
+             
                 <div class="row g-3">
                     <!-- Upload STD (Excel) -->
                     <div class="table-responsive">
@@ -210,13 +308,12 @@
                         </table>
                     </div>
                 </div>
-
+                <h6 class="card-title title-green">Process Summary (Original Tap)</h6>
             </div>
         </div>
 
        <div class="card mb-4">
-            <div class="card-body ">
-                <h6 class="card-title title-purple">Process Summary (Retap Data)</h6>
+            <div class="card-body">
                 <div class="row g-3">
                     <div class="table-responsive">
                         <table class="table table-bordered table-sm">
@@ -225,9 +322,10 @@
                         </table>
                     </div>
                 </div>
-
+                <h6 class="card-title title-purple">Process Summary (Retap Data)</h6>
             </div>
         </div>
+
 @* 
         <div class="card mb-4">
             <div class="card-body">

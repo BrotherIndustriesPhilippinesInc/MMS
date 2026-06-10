@@ -191,15 +191,39 @@
             color: #777;
         }
 
-        #attendanceTable tbody tr:hover td {
-            background-color: #e3f2fd;
+        /* #attendanceTable tbody tr:hover td { */
+        /*     background-color: #e3f2fd; */
+        /* } */
+
+        /*     #attendanceTable tbody tr:hover td[style*="outline"] { */
+        /*         background-color: #c8e6c9 !important; */
+        /*     } */
+        .metric-column {
+            min-width: 180px;
+            font-weight: bold;
+        }
+        #attendanceTable th:first-child,
+        #attendanceTable td:first-child {
+            position: sticky;
+            left: 0;
+            z-index: 2;
+            background: #fff;
+            min-width: 180px;
+            white-space: nowrap;
         }
 
-            #attendanceTable tbody tr:hover td[style*="outline"] {
-                background-color: #c8e6c9 !important;
-            }
+        #attendanceTable thead th:first-child {
+            z-index: 5;
+            background: #f8f9fa;
+        }
 
-      
+        /* Optional: keep header rows fixed vertically too */
+        #attendanceTable thead th {
+            position: sticky;
+            top: 0;
+            z-index: 3;
+            background: #f8f9fa;
+        }
 
     </style>
 </head>

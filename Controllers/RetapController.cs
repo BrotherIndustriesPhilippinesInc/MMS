@@ -48,6 +48,7 @@ namespace MMS.Controllers
 
                     using (var cmd = new SqlCommand(sql, con))
                     {
+                        cmd.CommandTimeout = 120;
                         cmd.Parameters.AddWithValue("@filterMonth", month);
                         cmd.Parameters.AddWithValue("@filterYear", year);
                         cmd.Parameters.AddWithValue("@agency1", (object?)agency ?? DBNull.Value);

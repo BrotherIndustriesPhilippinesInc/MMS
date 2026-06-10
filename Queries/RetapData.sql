@@ -544,7 +544,7 @@ IF OBJECT_ID('tempdb..#DailyAgg') IS NOT NULL DROP TABLE #DailyAgg;
         AND InDate BETWEEN @StartOfMonth AND @EndOfMonth
         --(FOR PR1)
         --AND Line NOT IN ('OFFICE-PG','OFFLINE-EG','OFFICE-MG','	OFFLINE-MG')
-        ----(FOR TN)
+        --(FOR TN)
         --AND Line NOT IN ('OFFICE-MGT','OFFLINE-MGT','OFFICE-PROD','OFFLINE-PROD','OFFICE-ENGR','')
 		AND Skill NOT IN('ASST.MANAGER','SRSTAFF/ENGR','CLERK')
 )

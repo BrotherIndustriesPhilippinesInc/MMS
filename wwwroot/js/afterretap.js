@@ -2,6 +2,7 @@
 let calendarDataretapretap = [];
 let calendarMapretapretap = {};
 let operatorValuesretap = {};
+let msoValuesretap = {};
 let currentSTDretap = {};
 let currentDaysretap = [];
 
@@ -93,6 +94,7 @@ function renderLineCountTableretap(retap_data) {
     tableBody.innerHTML = "";
 
     operatorValues = {};
+    msoValues = {};
     currentSTD = {};
 
     const month = parseInt($('#monthInput').val(), 10);
@@ -144,6 +146,8 @@ function renderLineCountTableretap(retap_data) {
 
             if (skillGroup.includes("Operator")) {
                 operatorValues[day] = val;
+            } else if (skillGroup.includes("MSO")) {
+                msoValues[day] = val;
             }
         });
 
@@ -194,8 +198,9 @@ function applyLackingRowretap() {
     currentDaysretap.forEach(day => {
 
         const actual = operatorValues[day] ?? 0;
+        const mso = msoValues[day] ?? 0;
         const std = currentSTD[day] ?? 0;
-        const diff = actual - std;
+        const diff = mso + actual - std;
 
         lackRow += `
             <td class="text-center fw-bold ${diff < 0 ? 'text-danger' : 'text-success'}">

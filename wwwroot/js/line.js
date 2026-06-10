@@ -2,6 +2,7 @@
 let calendarData = [];
 let calendarMap  = {};
 let operatorValues = {};
+let msoValues = {};
 let currentSTD = {};
 let currentDays = [];
 
@@ -96,6 +97,7 @@ function renderLineCountTable(data) {
     tableBody.innerHTML = "";
 
     operatorValues = {};
+    msoValues = {};
     currentSTD = {};
 
     const month = parseInt($('#monthInput').val(), 10);
@@ -153,6 +155,9 @@ function renderLineCountTable(data) {
             if (skillGroup.includes("Operator")) {
                 operatorValues[day] = val;
             }
+            else if (skillGroup.includes("MSO")) {
+                msoValues[day] = val;
+            }
         });
 
         tableBody.appendChild(tr);
@@ -201,8 +206,9 @@ function applyLackingRow() {
     currentDays.forEach(day => {
 
         const actual = operatorValues[day] ?? 0;
+        const mso = msoValues[day] ?? 0;
         const std    = currentSTD[day] ?? 0;
-        const diff   = actual - std;
+        const diff   = mso + actual - std;
 
         lackRow += `
             <td class="text-center fw-bold ${diff < 0 ? 'text-danger' : 'text-success'}">
@@ -248,8 +254,6 @@ $("#stdFile").on("change", function () {
 
     const formData = new FormData();
     formData.append("file", file);
-    formData.append("month", $("#monthInput").val());
-    formData.append("year", $("#yearInput").val());
     formData.append("section", $("#costCodeInput").val());
     formData.append("shift", $("#shiftInput").val());
 
@@ -257,28 +261,28 @@ $("#stdFile").on("change", function () {
         method: "POST",
         body: formData
     })
-    .then(res => res.json())
-    .then(res => {
+        .then(res => res.json())
+        .then(res => {
 
-        if (!res.success) {
-            Swal.fire("Error", res.message, "error");
-            return;
-        }
+            if (!res.success) {
+                Swal.fire("Error", res.message, "error");
+                return;
+            }
 
-        applySTDToTable(res.data);
+            applySTDToTable(res.data);
 
-        Swal.fire({
-            icon: "success",
-            title: "STD Uploaded",
-            text: `${res.data.std_type} applied successfully`,
-            timer: 1500,
-            showConfirmButton: false
+            Swal.fire({
+                icon: "success",
+                title: "STD Uploaded",
+                text: `${res.data.std_type} applied successfully`,
+                timer: 1500,
+                showConfirmButton: false
+            });
+        })
+        .catch(err => {
+            Swal.fire("Error", "Upload failed", "error");
+            console.error(err);
         });
-    })
-    .catch(err => {
-        Swal.fire("Error", "Upload failed", "error");
-        console.error(err);
-    });
 });
 
 // ===============================

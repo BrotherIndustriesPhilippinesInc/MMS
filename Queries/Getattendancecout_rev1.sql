@@ -1,36 +1,34 @@
 ﻿DECLARE 
-    @Month              INT             = 5,
-    @Year               INT             = 2026,
-    @Section            NVARCHAR(50)    = 'TN',
-    @Agency             NVARCHAR(50)    = '',
-    @Searchvalue        NVARCHAR(50)    = '',
-    @schedule           NVARCHAR(50)    = 'Day'
+	--@Month				INT				= '6'
+	--,@Year				INT				= '2026'
+	--,@Section			NVARCHAR(50)	= 'TN'
+	--,@Agency			NVARCHAR(50)	= ''
+	--,@Searchvalue		NVARCHAR(50)	= ''
+ --   ,@schedule           NVARCHAR(50)    = 'Day'
+	--,@EmpList dbo.TVP_RP_AttendanceSummary_Employees_V2 
 
-   -- @Month INT = @month1,
-   -- @Year INT = @year1,
-   -- @Agency NVARCHAR(50) = @agency1,
-   -- @schedule  NVARCHAR(20) = @shift1,
-   -- @schedule           NVARCHAR(50)    = 'Day',
-   -- @Line BIGINT = @line1,
-   -- @Searchvalue        NVARCHAR(50)    = '',
-   --@section NVARCHAR(50) = 'TN';
-
-DECLARE @EmpList dbo.TVP_RP_AttendanceSummary_Employees_V2
+    @Month INT = @month1,
+    @Year INT = @year1,
+    @Section NVARCHAR(50) = 'TN',
+    @Agency NVARCHAR(50) = @agency1,
+    @Searchvalue NVARCHAR(50)	= '',
+    @schedule  NVARCHAR(20) = @shift1,
+    @EmpList dbo.TVP_RP_AttendanceSummary_Employees_V2 
 
 BEGIN
     SET NOCOUNT ON;
 
-    INSERT INTO @EmpList
-    EXEC [dbo].[RP_AttendanceSummary_Employees]
-        @Month = @Month,
-        @Year = @Year,
-        @Section = @Section,
-        @Agency = @Agency
+   INSERT INTO @EmpList
+	EXEC [dbo].[RP_AttendanceSummary_Employees]
+		@Month = @Month,
+		@Year = @Year,
+		@Section = @Section,
+		@Agency = @Agency
 
     -- CLEAN TEMP TABLES
     DROP TABLE IF EXISTS #DaysMonth, #EmpList, #PA_RP_AttendanceSummary_TITO,
     #PA_TEMP_TITO, #TimeinOutRecord, #PresentAbsent,
-    #RestDay, #RegDay, #FinalEmp, #LEAVE_FILING, #ForPivot
+    #RestDay, #RegDay, #FinalEmp, #LEAVE_FILING, #ForPivot, #TiTo_withprocess,#RegisteredwithProcess
 
     -- DATE GENERATION
     ;WITH N(N) AS (SELECT 1 FROM (VALUES(1),(1),(1),(1),(1),(1)) M(N)),
@@ -45,25 +43,27 @@ BEGIN
     DECLARE @EndOfMonthDate_Next DATETIME = DATEADD(DAY,1,@EndofMonth)
 
     -- EMP LIST
-    SELECT  
-        MEL.Prio,
-        MEL.EmpNo,
-        MEL.RFID,
-        MEL.EmployeeName,
-        MEL.Schedule,  
-        MEL.ScheduleID,  
-        MEL.Position,  
-        MEL.EmployeeCurrentCostCode AS CostCode,
-        MEL.Date_Resigned,
-        MEL.Date_Hired,
-        MEL.DateResigned_Status,
-        MEL.Status as M_Status
-    INTO #EmpList
-    FROM @EmpList MEL
+	SELECT  MEL.Prio,
+				MEL.EmpNo,
+				MEL.RFID,
+				MEL.EmployeeName,
+				MEL.Schedule,  
+				MEL.ScheduleID,  
+				MEL.Position,  
+				MEL.EmployeeCurrentCostCode AS CostCode,
+				MEL.Date_Resigned,
+				MEL.Date_Hired,
+				MEL.DateResigned_Status,
+				MEL.Status as M_Status
+		INTO #EmpList
+		FROM @EmpList MEL
+		CREATE NONCLUSTERED INDEX #EmpList_EmpNo
+		ON #EmpList(EmpNo)
 
+    --SELECT * FROM @EmpList
 
     --select * from #EmpList where EmpNo = 'BIPH2025-23628'
-    CREATE NONCLUSTERED INDEX #EmpList_EmpNo ON #EmpList(EmpNo)
+    --CREATE NONCLUSTERED INDEX #EmpList_EmpNo ON #EmpList(EmpNo)
 
     -- LEAVE
     SELECT *
@@ -90,11 +90,13 @@ BEGIN
         EmpPrio INT
     )
 
+    --SELECT TOP 10 * FROM T_TimeInOut
+
     INSERT INTO #PA_RP_AttendanceSummary_TITO
     EXEC dbo.RP_AttendanceSummary_TiTo
         @Month,@Year,@Section,@Agency,@Searchvalue,@EmpList
 
-    -- 🔥 USE SCHEDULE FROM #EmpList
+    -- USE SCHEDULE FROM #EmpList
     SELECT 
         TITO.*, 
         CASE 
@@ -111,7 +113,62 @@ BEGIN
     INTO #TimeinOutRecord
     FROM #PA_TEMP_TITO
 
-    -- 🔥 PRESENT / ABSENT
+
+    --GET PROCESS AND LINE RECORD
+    CREATE TABLE #TiTo_withprocess(
+    EmpNo NVARCHAR(50),
+    TimeIn NVARCHAR(50),
+    TimeOut NVARCHAR(50),
+    LineID NVARCHAR(100),
+    ProcessID NVARCHAR(100),
+    Daynum INT,
+    Monthnum INT,
+    Yearnum INT,
+    DateLog DATE,
+    )
+   
+   -- Total Time in today with process details
+   INSERT INTO #TiTo_withprocess
+   SELECT t.EmpNo, t.TimeIn, t.TimeOut, lt.Line, ms.Skill, t.Daynum, t.Monthnum, t.Yearnum, t.DateLog 
+   FROM #PA_RP_AttendanceSummary_TITO t
+   JOIN T_TimeInOut o ON t.ID = o.ID join M_LineTeam lt on o.LineID = lt.ID
+   join M_Skills ms on o.ProcessID = ms.ID
+
+   --select * from #TiTo_withprocess where EmpNo = 'BIPH2025-26211'
+
+   
+
+CREATE TABLE #RegisteredwithProcess(
+    Empno NVARCHAR(50),
+    LineID NVARCHAR(100),
+    ProcessID NVARCHAR(100),
+    ProcessType NVARCHAR(50),
+    EmployeeStatus NVARCHAR(50)
+)
+
+INSERT INTO #RegisteredwithProcess
+SELECT 
+    el.EmpNo, 
+    lt.Line, 
+    ms.Skill, 
+    es.ProcessType, 
+    el.Status
+FROM @EmpList el
+JOIN (
+    SELECT *,
+           ROW_NUMBER() OVER (PARTITION BY EmpNo ORDER BY ID DESC) AS rn
+    FROM M_Employee_Skills
+    WHERE ProcessType = 'Original'
+) es ON el.EmpNo = es.EmpNo AND es.rn = 1
+JOIN M_LineTeam lt ON es.LineID = lt.ID
+JOIN M_Skills ms ON es.SkillID = ms.ID
+WHERE el.Status = 'ACTIVE';
+
+   --SELECT * FROM #RegisteredwithProcess 
+  
+
+
+    -- PRESENT / ABSENT
     DECLARE @CURRENT_DATETIME DATETIME = GETDATE();
 
     SELECT 
@@ -145,38 +202,22 @@ BEGIN
     INTO #PresentAbsent
     FROM #TimeinOutRecord TIO;
 
+    --SELECT * FROM #PresentAbsent
+
     -- FINAL EMP x DAYS
     SELECT e.*, d.DayOfMonth
     INTO #FinalEmp
     FROM #EmpList e
     CROSS JOIN #DaysMonth d
 
-    -- PIVOT BASE
-    --SELECT 
-    --    e.EmpNo,
-    --    DAY(e.DayOfMonth) AS PerDay,
-    --    ISNULL(pa.Result,'AB') AS Result,
-    --     CASE 
-    --    WHEN UPPER(e.Schedule) LIKE '%NIGHT%' THEN 1 
-    --    ELSE 0 
-    --END AS IsNightShift
-    --INTO #ForPivot
-    --FROM #FinalEmp e
-    --LEFT JOIN #PresentAbsent pa
-    --    ON pa.EmpNo = e.EmpNo
-    --    AND pa.Date = e.DayOfMonth
 
 SELECT 
     e.EmpNo,
-
-    -- 🔥 DATE FIELDS (NEW)
     d.DayOfMonth                               AS FullDate,
     YEAR(d.DayOfMonth)                         AS Yearnum,
     MONTH(d.DayOfMonth)                        AS Monthnum,
     DAY(d.DayOfMonth)                          AS MonthDay,
     DATENAME(WEEKDAY, d.DayOfMonth)            AS DayOfWeek,
-
-    -- keep for grouping (you can still use MonthDay)
     DAY(d.DayOfMonth)                          AS PerDay,
 
     -- RESULT WITH RESIGNED LOGIC
@@ -198,7 +239,33 @@ SELECT
         WHEN e.DateResigned_Status IS NOT NULL
              AND d.DayOfMonth = CAST(e.DateResigned_Status AS DATE)
         THEN 1 ELSE 0
-    END AS IsResignedDay
+    END AS IsResignedDay,
+
+CASE 
+    WHEN rp.ProcessID like '%MSO%'
+    THEN 'MSO'
+
+    WHEN e.Position like '%Technician%' or e.Position like '%Staff%' or e.Position like '%Technician%' 
+    THEN 'S-Rank'
+
+    WHEN e.Position like '%Technician%' or e.Position like '%Staff%' or e.Position like '%Technician%' 
+    THEN 'A-Rank'
+
+    ELSE 'Direct'
+END AS RankCategory,
+
+CASE 
+    WHEN tp.ProcessID like '%MSO%'
+    THEN 'MSO'
+
+    WHEN e.Position like '%Technician%' or e.Position like '%Staff%' or e.Position like '%Technician%' 
+    THEN 'S-Rank'
+
+    WHEN e.Position like '%Technician%' or e.Position like '%Staff%' or e.Position like '%Technician%' 
+    THEN 'A-Rank'
+
+    ELSE 'Direct'
+END AS RankCategorytapped
 
 INTO #ForPivot
 FROM #FinalEmp e
@@ -206,10 +273,15 @@ JOIN #DaysMonth d
     ON d.DayOfMonth = e.DayOfMonth
 LEFT JOIN #PresentAbsent pa
     ON pa.EmpNo = e.EmpNo
-    AND pa.Date = d.DayOfMonth;
+    AND pa.Date = d.DayOfMonth
+LEFT JOIN #RegisteredwithProcess rp
+    ON rp.EmpNo = e.EmpNo
+LEFT JOIN #TiTo_withprocess tp
+    ON tp.EmpNo = e.EmpNo
+AND tp.DateLog = d.DayOfMonth
 
-    -- APPLY LEAVE
-    UPDATE FP
+-- APPLY LEAVE
+UPDATE FP
     SET FP.Result =
         ISNULL(
             (SELECT TOP 1 LF.LeaveCode
@@ -222,7 +294,7 @@ LEFT JOIN #PresentAbsent pa
         )
     FROM #ForPivot FP;
 
-    --select * from #ForPivot;
+--select * from #ForPivot;
  --FINAL SUMMARY
  SELECT 
     Yearnum,
@@ -309,14 +381,14 @@ LEFT JOIN #PresentAbsent pa
         THEN 1 ELSE 0 END) AS Actual,
 
     -- Register MP
-    --COUNT(CASE 
-    --    WHEN Result <> '-'
-    --         AND (
-    --            (@schedule = 'Day' AND IsNightShift = 0) OR
-    --            (@schedule = 'Night' AND IsNightShift = 1) OR
-    --            (@schedule NOT IN ('Day','Night'))
-    --         )
-    --    THEN EmpNo END) AS [Register MP],
+    COUNT(CASE 
+        WHEN Result <> '-'
+             AND (
+                (@schedule = 'Day' AND IsNightShift = 0) OR
+                (@schedule = 'Night' AND IsNightShift = 1) OR
+                (@schedule NOT IN ('Day','Night'))
+             )
+        THEN EmpNo END) AS [Register MP],
 
     -- Total Absent
     SUM(CASE 
@@ -326,8 +398,124 @@ LEFT JOIN #PresentAbsent pa
                 (@schedule = 'Night' AND IsNightShift = 1) OR
                 (@schedule NOT IN ('Day','Night'))
              )
-        THEN 1 ELSE 0 END) AS Absent
+        THEN 1 ELSE 0 END) AS Absent,
+      
 
+    -- KIT (MSO)
+    SUM(CASE 
+        WHEN RankCategory = 'MSO' AND
+            Result NOT IN ('P(D)','P(N)','-')
+                 AND (
+                    (@schedule = 'Day' AND IsNightShift = 0) OR
+                    (@schedule = 'Night' AND IsNightShift = 1) OR
+                    (@schedule NOT IN ('Day','Night'))
+                 )
+        THEN 1 ELSE 0 END) AS MSO,
+
+    -- S-RANK
+    SUM(CASE 
+        WHEN RankCategory = 'S-Rank' AND
+             Result NOT IN ('P(D)','P(N)','-')
+                 AND (
+                    (@schedule = 'Day' AND IsNightShift = 0) OR
+                    (@schedule = 'Night' AND IsNightShift = 1) OR
+                    (@schedule NOT IN ('Day','Night'))
+                 )
+        THEN 1 ELSE 0 END) AS SRank_Count,
+
+    -- A-RANK
+    SUM(CASE 
+        WHEN RankCategory = 'A-Rank' AND 
+             Result NOT IN ('P(D)','P(N)','-')
+                 AND (
+                    (@schedule = 'Day' AND IsNightShift = 0) OR
+                    (@schedule = 'Night' AND IsNightShift = 1) OR
+                    (@schedule NOT IN ('Day','Night'))
+                 )
+    THEN 1 ELSE 0 END) AS ARank_Count,
+
+    --ACTUAL DIRECT
+SUM(CASE 
+    WHEN RankCategory = 'Direct' AND
+         Result NOT IN ('P(D)','P(N)','-')
+             AND (
+                (@schedule = 'Day' AND IsNightShift = 0) OR
+                (@schedule = 'Night' AND IsNightShift = 1) OR
+                (@schedule NOT IN ('Day','Night'))
+             )
+    THEN 1 ELSE 0 END) AS Registered_Direct,
+
+     SUM(CASE WHEN  RankCategorytapped = 'Direct' AND  @schedule = 'Day'   AND Result = 'P(D)' THEN 1
+             WHEN @schedule NOT IN ('Day','Night') AND Result = 'P(D)' THEN 1
+             ELSE 0 END) AS Direct_Present_Day,
+
+        -- VL
+    SUM(CASE 
+        WHEN  RankCategorytapped = 'Direct' AND Result = 'VL' 
+             AND Result <> '-'
+             AND (
+                (@schedule = 'Day' AND IsNightShift = 0) OR
+                (@schedule = 'Night' AND IsNightShift = 1) OR
+                (@schedule NOT IN ('Day','Night'))
+             )
+        THEN 1 ELSE 0 END) AS Direct_VL_Count,
+
+    -- SL
+    SUM(CASE 
+        WHEN  RankCategorytapped = 'Direct' AND Result = 'SL'
+             AND Result <> '-'
+             AND (
+                (@schedule = 'Day' AND IsNightShift = 0) OR
+                (@schedule = 'Night' AND IsNightShift = 1) OR
+                (@schedule NOT IN ('Day','Night'))
+             )
+        THEN 1 ELSE 0 END) AS Direct_SL_Count,
+
+    -- NW
+    SUM(CASE 
+        WHEN  RankCategorytapped = 'Direct' AND Result = 'NW'
+             AND Result <> '-'
+             AND (
+                (@schedule = 'Day' AND IsNightShift = 0) OR
+                (@schedule = 'Night' AND IsNightShift = 1) OR
+                (@schedule NOT IN ('Day','Night'))
+             )
+        THEN 1 ELSE 0 END) AS Direct_NW_Count,
+
+    -- ML
+    SUM(CASE 
+        WHEN RankCategorytapped = 'Direct' AND Result = 'ML'
+             AND Result <> '-'
+             AND (
+                (@schedule = 'Day' AND IsNightShift = 0) OR
+                (@schedule = 'Night' AND IsNightShift = 1) OR
+                (@schedule NOT IN ('Day','Night'))
+             )
+        THEN 1 ELSE 0 END) AS Direct_ML_Count,
+
+    -- RS (only effective day)
+    SUM(CASE WHEN  RankCategorytapped = 'Direct' AND IsResignedDay = 1 THEN 1 ELSE 0 END) AS RS_Count,
+
+    -- AB
+    SUM(CASE 
+        WHEN  RankCategorytapped = 'Direct' AND Result = 'AB'
+             AND Result <> '-'
+             AND (
+                (@schedule = 'Day' AND IsNightShift = 0) OR
+                (@schedule = 'Night' AND IsNightShift = 1) OR
+                (@schedule NOT IN ('Day','Night'))
+             )
+        THEN 1 ELSE 0 END) AS Direct_AB_Count,
+
+    -- Present total
+    SUM(CASE 
+        WHEN  RankCategorytapped = 'Direct' AND Result IN ('P(D)','P(N)')
+             AND (
+                (@schedule = 'Day' AND IsNightShift = 0) OR
+                (@schedule = 'Night' AND IsNightShift = 1) OR
+                (@schedule NOT IN ('Day','Night'))
+             )
+        THEN 1 ELSE 0 END) AS Direct_Actual
 FROM #ForPivot
 GROUP BY 
     Yearnum,
