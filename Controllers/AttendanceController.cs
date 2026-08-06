@@ -1,5 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Configuration;
+using Npgsql;
 
 namespace MMS.Controllers
 {
@@ -24,6 +26,7 @@ namespace MMS.Controllers
             {
                 //var sql = SqlLoader.Load("Getattendancecout.sql");
                 var sql = SqlLoader.Load("Getattendancecout_rev1.sql");
+                //var sql = "EXEC get_attendance(@mont)"
 
                 using (var con =_db.GetConnection())
                 {
@@ -35,7 +38,8 @@ namespace MMS.Controllers
                         cmd.Parameters.AddWithValue("@month1", month);
                         cmd.Parameters.AddWithValue("@year1", year);
                         cmd.Parameters.AddWithValue("@agency1", (object?)agency ?? DBNull.Value);
-                        cmd.Parameters.AddWithValue("@shift1", (object?)shift ?? DBNull.Value);
+                        //cmd.Parameters.AddWithValue("@shift1", (object?)shift ?? DBNull.Value);
+                        cmd.Parameters.AddWithValue("@shift1", string.IsNullOrWhiteSpace(shift) ? "" : shift);
                         cmd.Parameters.AddWithValue("@costCode1", (object?)costCode ?? DBNull.Value);
                         cmd.Parameters.AddWithValue("@line1", (object?)line ?? 0);
 
@@ -158,6 +162,111 @@ namespace MMS.Controllers
             catch (Exception)
             {
                 return StatusCode(500, new { error = "Query failed." });
+            }
+        }
+
+        [HttpPost]
+        public IActionResult SaveForecast(int year, int month, int day, string dayOfWeek, decimal forecastValue)
+        {
+            string sql = @"INSERT INTO public.tbl_forcasted(year_num, month_num, month_day, forcasted_data, date_updated)
+                        VALUES(@year,@month,@day,@forecastValue,NOW()) 
+                        ON CONFLICT (year_num, month_num, month_day) DO UPDATE SET
+                        forcasted_data = EXCLUDED.forcasted_data,
+                        date_updated = NOW();";
+
+            using (var conn = _db.GetpostreConnection())
+            {
+                conn.Open();
+
+                using (var cmd = new NpgsqlCommand(sql, conn))
+                {
+                    cmd.Parameters.AddWithValue("@year", year);
+                    cmd.Parameters.AddWithValue("@month", month);
+                    cmd.Parameters.AddWithValue("@day", day);
+                    cmd.Parameters.AddWithValue("@forecastValue", forecastValue);
+
+                    cmd.ExecuteNonQuery();
+                }
+            }
+
+            return Json(new { success = true });
+        }
+
+        [HttpGet]
+        public IActionResult GetForecast(int year)
+        {
+            var result = new List<object>();
+
+            string sql = @"SELECT year_num, month_num, month_day, dayoffweek, forcasted_data FROM public.tbl_forcasted WHERE year_num = @year ORDER BY month_num, month_day;";
+
+            using (var conn = _db.GetpostreConnection())
+            {
+                conn.Open();
+
+                using (var cmd = new NpgsqlCommand(sql, conn))
+                {
+                    cmd.Parameters.AddWithValue("@year", year);
+
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            result.Add(new
+                            {
+                                Year = reader["year_num"],
+                                Month = reader["month_num"],
+                                Day = reader["month_day"],
+                                DayOfWeek = reader["dayoffweek"],
+                                ForecastedData = reader["forcasted_data"]
+                            });
+                        }
+                    }
+                }
+            }
+
+            return Json(result);
+        }
+
+        [HttpPost]
+        public IActionResult SaveForecastRange(DateTime dateFrom, DateTime dateTo, decimal forecastRate)
+        {
+            try
+            {
+                using (var conn = _db.GetpostreConnection())
+                {
+                    conn.Open();
+
+                    for (DateTime d = dateFrom; d <= dateTo; d = d.AddDays(1))
+                    {
+                        string sql = @"INSERT INTO public.tbl_forcasted(year_num, month_num, month_day, dayoffweek, forcasted_data, date_updated)
+                                    VALUES(@year, @month, @day, @dayofweek, @forecast, NOW()) ON CONFLICT (year_num, month_num, month_day)
+                                    DO UPDATE SET forcasted_data = EXCLUDED.forcasted_data, date_updated = NOW();";
+
+                        using (var cmd = new NpgsqlCommand(sql, conn))
+                        {
+                            cmd.Parameters.AddWithValue("@year", d.Year);
+                            cmd.Parameters.AddWithValue("@month", d.Month);
+                            cmd.Parameters.AddWithValue("@day", d.Day);
+                            cmd.Parameters.AddWithValue("@dayofweek", d.DayOfWeek.ToString());
+                            cmd.Parameters.AddWithValue("@forecast", forecastRate);
+
+                            cmd.ExecuteNonQuery();
+                        }
+                    }
+                }
+
+                return Json(new
+                {
+                    success = true
+                });
+            }
+            catch (Exception ex)
+            {
+                return Json(new
+                {
+                    success = false,
+                    message = ex.Message
+                });
             }
         }
 

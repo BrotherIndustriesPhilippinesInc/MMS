@@ -225,6 +225,93 @@
             background: #f8f9fa;
         }
 
+        .modal-content {
+            border-radius: 20px;
+        }
+
+        .form-control,
+        .input-group-text {
+            border-radius: 12px;
+        }
+
+        .form-control:focus {
+           box-shadow: 0 0 0 0.2rem rgba(13,110,253,.15);
+         }
+        .modal-header {
+            padding: 18px 24px;
+        }
+
+        .modal-body {
+            background: #fafafa;
+        }
+
+        body.dark-mode {
+            background: #121212;
+            color: #f1f1f1;
+        }
+
+            /* Cards */
+            body.dark-mode .card {
+                background: #1e1e1e;
+                color: #fff;
+                border-color: #333;
+            }
+
+            /* Tables */
+            body.dark-mode table {
+                color: #fff;
+            }
+
+            body.dark-mode .table {
+                --bs-table-bg: #1e1e1e;
+                --bs-table-color: #fff;
+                --bs-table-border-color: #444;
+            }
+
+            /* Inputs */
+            body.dark-mode .form-control,
+            body.dark-mode .form-select,
+            body.dark-mode .input-group-text {
+                background: #2a2a2a;
+                color: #fff;
+                border-color: #555;
+            }
+
+            /* Dropdown */
+            body.dark-mode .dropdown-menu {
+                background: #2a2a2a;
+            }
+
+            body.dark-mode .dropdown-item {
+                color: #fff;
+            }
+
+                body.dark-mode .dropdown-item:hover {
+                    background: #3b3b3b;
+                }
+
+            /* Modal */
+            body.dark-mode .modal-content {
+                background: #1e1e1e;
+                color: #fff;
+            }
+
+            body.dark-mode .modal-header,
+            body.dark-mode .modal-footer {
+                border-color: #444;
+            }
+
+            /* Nav Tabs */
+            body.dark-mode .nav-tabs .nav-link {
+                color: #ddd;
+            }
+
+                body.dark-mode .nav-tabs .nav-link.active {
+                    background: #1e1e1e;
+                    color: #fff;
+                    border-color: #555;
+                }
+
     </style>
 </head>
 
@@ -263,6 +350,27 @@
         //         }, 500);
         //     }, 1200);
         // });
+                $(function () {
+
+            // Load saved preference
+            if (localStorage.getItem("theme") === "dark") {
+                $("body").addClass("dark-mode");
+                $("#darkModeToggle").prop("checked", true);
+            }
+
+            $("#darkModeToggle").on("change", function () {
+
+                if ($(this).is(":checked")) {
+                    $("body").addClass("dark-mode");
+                    localStorage.setItem("theme", "dark");
+                } else {
+                    $("body").removeClass("dark-mode");
+                    localStorage.setItem("theme", "light");
+                }
+
+            });
+
+        });
     </script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>

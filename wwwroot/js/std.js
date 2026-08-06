@@ -1,15 +1,21 @@
+let savedForecasts = [];
+
 $(document).ready(function () {
 
     let attendanceChart = null;
 
     let cachedAttendanceData = [];
     let cachedCalendarData = [];
+
     function getSelectedFilter() {
         if ($('#direct_filter').is(':checked')) return 'DIRECT';
         if ($('#kit_filter').is(':checked')) return 'KIT';
         if ($('#mso_filter').is(':checked')) return 'MSO';
         return 'ALL';
     }
+
+
+
 
     function buildAttendanceTable(data, calendarData) {
 
@@ -26,15 +32,7 @@ $(document).ready(function () {
             };
         }
         else {
-            //metricLabels = {
-            //    'Register MP': 'Register MP',
-            //    'Actual': 'Present (Actual)',
-            //    'Absent': 'Absent',
-            //    'RS_Count': 'RS (Resigned)',
-            //    'ML_Count': 'ML Count',
-            //    'NW_Count': 'NW Count (No Work)',
-            //    'AbsentRate': 'Absent Rate'
-            //};
+
             metricLabels = {
                 'Register MP': 'Register MP',
                 'Actual': 'Present (Actual)',
@@ -94,20 +92,26 @@ $(document).ready(function () {
                 forecastEnd: new Date(selectedYear, 6, 3),
                 historyStart: new Date(selectedYear, 5, 1),
                 historyEnd: new Date(selectedYear, 5, 12)
+            },
+            {
+                forecastStart: new Date(selectedYear, 6, 6),  
+                forecastEnd: new Date(selectedYear, 6, 10),   
+                historyStart: new Date(selectedYear, 5, 8),     
+                historyEnd: new Date(selectedYear, 5, 19)     
+            },
+            {
+                forecastStart: new Date(selectedYear, 6, 13),  
+                forecastEnd: new Date(selectedYear, 6, 17),  
+                historyStart: new Date(selectedYear, 5, 15),
+                historyEnd: new Date(selectedYear, 5, 26)
             }
+
+         
         ];
 
         let todayColIndex = -1;
         const isCurrentMonth = (selectedMonth === todayMonth && selectedYear === todayYear);
 
-        // CALENDAR MAP
-        //const calendarMap = {};
-        //if (calendarData && calendarData.length > 0) {
-        //    calendarData.forEach(c => {
-        //        const day = parseInt(c.day, 10);
-        //        calendarMap[day] = c;
-        //    });
-        //}
         const calendarMap = {};
 
         calendarData.forEach(c => {
@@ -117,6 +121,17 @@ $(document).ready(function () {
 
             calendarMap[key] = c;
         });
+
+          function saveForecast(month, day, value, metric) {
+
+            $.post('Attendance/SaveForecast', {
+                year: selectedYear,
+                month: month,
+                day: day,
+                metricName: metric,
+                forecastValue: value
+            });
+        }
 
         function getCalendarStyle(type) {
             switch (type) {
@@ -179,55 +194,7 @@ $(document).ready(function () {
             headerHTML += `<th colspan="${data.length}" style="background-color:brown;color:white;text-align:center;">ACTUAL</th>`;
         }
 
-        //function computeForecastAbsentRate() {
 
-        //    const historyRates = [];
-
-        //    for (let i = todayColIndex; i >= 0; i--) {
-
-        //        const dayData = data[i];
-
-        //        const day = parseInt(dayData.MonthDay, 10);
-
-        //        const calendarKey =
-        //            dayData.Month + "_" + day;
-
-        //        const calendar =
-        //            calendarMap[calendarKey];
-
-        //        if (!calendar)
-        //            continue;
-
-        //        if (calendar.type !== -1)
-        //            continue;
-
-        //        let absent =
-        //            parseFloat(dayData['Absent'] || 0);
-
-        //        let ml =
-        //            parseFloat(dayData['ML_Count'] || 0);
-
-        //        let register =
-        //            parseFloat(dayData['Register MP'] || 0);
-
-        //        if (register <= 0)
-        //            continue;
-
-        //        const rate =
-        //            ((absent + ml) / register) * 100;
-
-        //        historyRates.push(rate);
-
-        //        if (historyRates.length >= 10)
-        //            break;
-        //    }
-
-        //    if (historyRates.length === 0)
-        //        return 0;
-
-        //    return historyRates.reduce((a, b) => a + b, 0)
-        //        / historyRates.length;
-        //}
 
           function computeForecastMetric(metricName) {
 
@@ -291,6 +258,22 @@ $(document).ready(function () {
                     dataDate >= matrix.historyStart &&
                     dataDate <= matrix.historyEnd
                 ) {
+
+                    const day =
+                        parseInt(dayData.MonthDay, 10);
+
+                    const calendarKey =
+                        dayData.Month + "_" + day;
+
+                    const calendar =
+                        calendarMap[calendarKey];
+
+                    // Only include normal working days
+                    if (!calendar)
+                        return;
+
+                    if (calendar.type !== -1)
+                        return;
 
                     const value =
                         parseFloat(dayData[metricName] || 0);
@@ -410,9 +393,16 @@ $(document).ready(function () {
         for (const [key, label] of Object.entries(metricLabels)) {
 
             //let row = `<tr><td class="fw-bold">${label}</td>`;
-            let row = `<tr><td class="fw-bold metric-column">${label}</td>`;
+            //let row = `<tr><td class="fw-bold metric-column">${label}</td>`;
+            let row = `<tr><td class="fw-bold metric-column metric-label" data-metric="${key}">${label}</td>`;
 
             data.forEach((dayData, index) => {
+                const todayRegisterMP =
+                    todayColIndex >= 0
+                        ? parseFloat(
+                            data[todayColIndex]['Register MP'] || 0
+                        )
+                        : 0;
 
                 if (key === 'ForecastedAbsentRate') {
 
@@ -436,11 +426,114 @@ $(document).ready(function () {
                     return;
                 }
 
+                //let value = dayData[key];
                 let value = dayData[key];
-                let styles = [];
 
-                //const day = parseInt(dayData.MonthDay, 10);
-                //const calendar = calendarMap[day];
+                if (isCurrentMonth && index > todayColIndex) {
+
+                    const forecastDate = new Date(
+                        selectedYear,
+                        parseInt(dayData.Month) - 1,
+                        parseInt(dayData.MonthDay)
+                    );
+
+                    const savedForecast = savedForecasts.find(x =>
+                        parseInt(x.Month) === parseInt(dayData.Month) &&
+                        parseInt(x.Day) === parseInt(dayData.MonthDay)
+                    );
+
+                    if (savedForecast) {
+
+    //const forecastRate =
+    //    parseFloat(savedForecast.ForecastRate);
+
+    //const forecastRate = parseFloat(savedForecast.ForecastedData);
+
+    //const forecastAbsent =
+    //    (forecastRate / 100) * todayRegisterMP;
+
+                        //value = Math.round(todayRegisterMP - forecastAbsent);
+    const forecastRate = parseFloat(savedForecast.ForecastRate);
+
+    const forecastAbsent = Math.round(todayRegisterMP * (forecastRate / 100));
+
+    value = todayRegisterMP - forecastAbsent;
+    }
+
+                    if (key === 'Actual') {
+
+                        //if (savedForecast) {
+
+                        //    value =
+                        //        parseInt(savedForecast.ForecastedData);
+                        //}
+
+                            if (savedForecast) {
+
+                                const forecastRate = parseFloat(savedForecast.ForecastRate);
+
+                                const forecastAbsent = Math.round(
+                                    todayRegisterMP * (forecastRate / 100)
+                                );
+
+                                value = todayRegisterMP - forecastAbsent;
+                            }
+                        else {
+
+                            const forecastRate =
+                                getForecastAbsentRate(
+                                    forecastDate
+                                );
+
+                            const forecastAbsent =
+                                forecastRate == null
+                                    ? 0
+                                    : ((forecastRate / 100) * todayRegisterMP);
+
+                            value =
+                                Math.round(
+                                    todayRegisterMP - forecastAbsent
+                                );
+
+                            saveForecast(
+                                parseInt(dayData.Month),
+                                parseInt(dayData.MonthDay),
+                                forecastRate,
+                                'AbsentRate'    
+                            );
+
+                         
+                        }
+                    }
+                 
+                    else if (key === 'Absent') {
+
+                        const forecastRate =
+                            getForecastAbsentRate(
+                                forecastDate
+                            );
+
+                        value =
+                            forecastRate == null
+                                ? 0
+                                : Math.round(
+                                    (forecastRate / 100) *
+                                    todayRegisterMP
+                                );
+                    }
+                
+                    else if (key === 'RS_Count') {
+
+                        value = Math.round(
+                            getForecastValue(
+                                'RS_Count',
+                                forecastDate
+                            )
+                        );
+
+                    }
+                }
+                let styles = [];
                 const day = parseInt(dayData.MonthDay, 10);
 
                 const calendarKey =
@@ -452,11 +545,6 @@ $(document).ready(function () {
                 if (calendar) {
                     styles.push(getCalendarStyle(calendar.type));
                 }
-
-                //if (key === 'AbsentRate') {
-                //    let rate = computeAbsentRate(dayData);
-                //    value = rate.toFixed(2) + '%';
-                    //}
                 if (key === 'AbsentRate') {
 
                     let rate =
@@ -521,7 +609,10 @@ $(document).ready(function () {
 
             let value = '';
 
+
             if (index > todayColIndex) {
+
+            
 
                 //value =
                 //    forecastAbsentRate.toFixed(2) + '%';
@@ -532,10 +623,18 @@ $(document).ready(function () {
                         parseInt(dayData.MonthDay)
                     );
 
-                const forecastRate =
-                    getForecastAbsentRate(
-                        forecastDate
-                    );
+                //const forecastRate =
+                //    getForecastAbsentRate(
+                //        forecastDate
+                //    );
+                const savedForecast = savedForecasts.find(x =>
+                    parseInt(x.Month) === parseInt(dayData.Month) &&
+                    parseInt(x.Day) === parseInt(dayData.MonthDay)
+                );
+
+                const forecastRate = savedForecast
+                    ? parseFloat(savedForecast.ForecastRate)
+                    : getForecastAbsentRate(forecastDate);
 
                 value =
                     forecastRate == null
@@ -595,7 +694,7 @@ $(document).ready(function () {
 
 
 
-        bodyHTML += forecastPresentRow;
+        //bodyHTML += forecastPresentRow;
 
         let forecastAbsentRow = `
 <tr>
@@ -632,13 +731,13 @@ $(document).ready(function () {
 
         forecastAbsentRow += '</tr>';
 
-        bodyHTML += forecastAbsentRow;
+        //bodyHTML += forecastAbsentRow;
 
         let forecastRSRow = `
-<tr>
-    <td class="fw-bold text-warning">
-        Forecasted RS
-    </td>`;
+            <tr>
+                <td class="fw-bold text-warning">
+                    Forecasted RS
+                </td>`;
 
         data.forEach((dayData, index) => {
 
@@ -670,18 +769,37 @@ $(document).ready(function () {
 
         forecastRSRow += '</tr>';
 
-        bodyHTML += forecastRSRow;
 
         $('#tableBody').html(bodyHTML);
         Swal.close();
     }
-
-    // CLICK ABSENT BREAKDOWN
     $(document).off('click', '.absent-cell').on('click', '.absent-cell', function () {
         $(this).siblings('.absent-breakdown').toggleClass('d-none');
     });
 
-    // FILTER CHANGE (NO API CALL)
+    $(document).off('click', '.metric-label').on('click', '.metric-label', function () {
+
+        const metric =
+            $(this).data('metric');
+
+        if (
+            metric !== 'Absent' &&
+            metric !== 'Direct_AB_Count'
+        ) {
+            return;
+        }
+
+        const hasHidden =
+            $('.absent-breakdown.d-none').length > 0;
+
+        if (hasHidden) {
+            $('.absent-breakdown').removeClass('d-none');
+        } else {
+            $('.absent-breakdown').addClass('d-none');
+        }
+
+    });
+
     $('.filter-container input[type="checkbox"]').on('change', function () {
 
         $('.filter-container input').not(this).prop('checked', false);
@@ -691,7 +809,6 @@ $(document).ready(function () {
         }
     });
 
-    // LOAD BUTTON (ONLY PLACE THAT CALLS SQL)
     $('#insertPivotBtn').on('click', function () {
 
         const yearVal = $('#yearInput').val();
@@ -702,6 +819,19 @@ $(document).ready(function () {
             Swal.fire('Error', 'Please fill in all required fields.', 'error');
             return;
         }
+
+
+        $.ajax({
+            url: 'Attendance/GetForecast',
+            type: 'GET',
+            data: {
+                year: yearVal
+            },
+            async: false,
+            success: function (res) {
+                savedForecasts = res;
+            }
+        });
 
         const $btn = $(this);
 
@@ -718,7 +848,7 @@ $(document).ready(function () {
         </tr>
     `);
 
-        const monthsToLoad = [5, 6, 7, 8]; // May-August
+        const monthsToLoad = [5, 6, 7, 8]; 
 
         let allAttendanceData = [];
         let allCalendarData = [];
@@ -755,7 +885,6 @@ $(document).ready(function () {
                 }
             });
 
-            // ATTENDANCE
             $.ajax({
                 url: 'Attendance/GetAttendanceCount',
                 method: 'POST',
@@ -804,7 +933,7 @@ $(document).ready(function () {
 
         });
 
-    
+      
 
         function finishLoading() {
 
@@ -828,6 +957,105 @@ $(document).ready(function () {
 
             $btn.prop('disabled', false).text('Load');
         }
+
+    });
+
+
+    $("#btnSaveForecast").click(function () {
+
+        const dateFrom = $("#date_from").val();
+        const dateTo = $("#date_to").val();
+        const percent = $("#forecast_percent").val();
+
+        if (!dateFrom || !dateTo || percent === "") {
+
+            Swal.fire(
+                "Validation",
+                "Please complete all fields.",
+                "warning"
+            );
+
+            return;
+        }
+
+        $.ajax({
+
+            url: "Attendance/SaveForecastRange",
+            type: "POST",
+
+            data: {
+
+                dateFrom: dateFrom,
+                dateTo: dateTo,
+                forecastRate: percent
+            },
+
+            success: function (res) {
+
+                if (!res.success) {
+
+                    Swal.fire(
+                        "Error",
+                        res.message,
+                        "error"
+                    );
+
+                    return;
+                }
+
+                //-----------------------------------
+                // Update local forecast collection
+                //-----------------------------------
+
+                const start = new Date(dateFrom);
+                const end = new Date(dateTo);
+
+                for (
+                    let d = new Date(start);
+                    d <= end;
+                    d.setDate(d.getDate() + 1)
+                ) {
+
+                    const month = d.getMonth() + 1;
+                    const day = d.getDate();
+
+                    let existing = savedForecasts.find(x =>
+
+                        parseInt(x.Month) === month &&
+                        parseInt(x.Day) === day
+                    );
+
+                    if (existing) {
+
+                        //existing.ForecastedData = percent;
+                        //existing.ForecastedData = parseFloat(percent);
+                        existing.ForecastRate = parseFloat(percent);
+                    }
+                    else {
+
+                        savedForecasts.push({ Month: month, Day: day, ForecastRate: parseFloat(percent) });
+                    }
+                }
+
+                // redraw table only
+                buildAttendanceTable(
+                    cachedAttendanceData,
+                    cachedCalendarData
+                );
+
+                bootstrap.Modal
+                    .getInstance(document.getElementById("forcastinput"))
+                    .hide();
+
+                Swal.fire(
+                    "Saved!",
+                    "Forecast updated.",
+                    "success"
+                );
+
+            }
+
+        });
 
     });
 

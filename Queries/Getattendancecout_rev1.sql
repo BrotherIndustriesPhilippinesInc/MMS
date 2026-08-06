@@ -9,7 +9,8 @@
 
     @Month INT = @month1,
     @Year INT = @year1,
-    @Section NVARCHAR(50) = 'TN',
+    --@Section NVARCHAR(50) = 'TN',
+    @Section NVARCHAR(50) = @costCode1,
     @Agency NVARCHAR(50) = @agency1,
     @Searchvalue NVARCHAR(50)	= '',
     @schedule  NVARCHAR(20) = @shift1,
@@ -434,7 +435,7 @@ UPDATE FP
                  )
     THEN 1 ELSE 0 END) AS ARank_Count,
 
-    --ACTUAL DIRECT
+--ACTUAL DIRECT
 SUM(CASE 
     WHEN RankCategory = 'Direct' AND
          Result NOT IN ('P(D)','P(N)','-')
@@ -449,7 +450,7 @@ SUM(CASE
              WHEN @schedule NOT IN ('Day','Night') AND Result = 'P(D)' THEN 1
              ELSE 0 END) AS Direct_Present_Day,
 
-        -- VL
+     -- VL
     SUM(CASE 
         WHEN  RankCategorytapped = 'Direct' AND Result = 'VL' 
              AND Result <> '-'
